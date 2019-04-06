@@ -2,7 +2,15 @@
 
 
 
-def recognize(self,name):
+def recognize(name):
+  """
+  Recognize which correlator you want to compute
+  """
+  # single operators, for expectation values
+  if name=="X": return "Id","Sx"
+  if name=="Y": return "Id","Sy"
+  if name=="Z": return "Id","Sz"
+  # next cases
   spins = [] # names for spin correlators
   for s1 in ["X","Y","Z","+","-"]:
     for s2 in ["X","Y","Z","+","-"]: spins += [s1+s2] # create all the possibilities

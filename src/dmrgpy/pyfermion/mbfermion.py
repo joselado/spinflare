@@ -3,6 +3,9 @@ from ..pychain.spectrum import ground_state
 import numpy as np
 from scipy.sparse import csc_matrix,identity
 import scipy.sparse.linalg as slg
+from ..algebra import algebra
+from .. import operatornames
+from .. import funtk
 
 
 nmax = 15 # maximum number of levels
@@ -29,14 +32,14 @@ class MBFermion():
     """
     Class for a many body fermionic Hamiltonian
     """
-    def __init__(self,n):
+    def __init__(self,n,fconf = lambda x: True):
         """
         Initialize the object
         """
         self.n = n # number of different levels
         if n>nmax: raise # too big system
         self.c_dict = dict() # dictionary with the annhilation operators
-        self.basis = states.generate_basis(self.n,lambda x: True) # basis
+        self.basis = states.generate_basis(self.n,fconf) # basis
         self.nMB = len(self.basis) # dimension of many body hamiltonian
         self.basis_dict = states.get_dictionary(self.basis) # dictionary
         self.h = csc_matrix(([],([],[])),shape=(self.nMB,self.nMB)) # Hamil
@@ -54,18 +57,39 @@ class MBFermion():
         """
         Initialize the Hamiltonian
         """
-        self.h = csc_matrix(([],([],[])),shape=(self.nMB,self.nMB))
+        self.h = self.get_zero()
+    def get_zero(self):
+        """
+        Return the zero matrix
+        """
+        return csc_matrix(([],([],[])),shape=(self.nMB,self.nMB))
     def add_hopping(self,m):
         """
         Add a single particle term to the Hamiltonian
         """
         self.h = self.h + self.one2many(m) # add contribution
+
+    def get_hopping(self,m):
+        """
+        Return Hopping matrix
+        """
+        return self.one2many(m) # return the matrix
     def add_hubbard(self,hubbard):
         """
         Add a Hubbard term to the hamiltonian
         """
         if hubbard is None: return
         self.h = self.h + self.hubbard(hubbard) # add Hubbard term
+    def add_vijkl(self,f):
+        """
+        Add a generalized interaction
+        """
+        self.h = self.h + self.get_vijkl(f)
+    def get_vijkl(self,f):
+        """
+        Return the generalized interaction
+        """
+        return get_vijkl(self,f)
     def get_gs(self):
         """
         Return the ground state
@@ -92,8 +116,21 @@ class MBFermion():
         for i in range(len(m0)):
           for j in range(len(m0)):
               if abs(m0[i,j])>1e-7:
-                m = m + self.get_cd(i)*self.get_c(j)*m0[i,j] # add contribution
+                m = m + self.get_cd(i)@self.get_c(j)*m0[i,j] # add contribution
         return m # return many body hamiltonian
+    def get_pairing(self,fun):
+        """
+        Return a pairing term
+        """
+        m = self.get_zero() # get zero matrix
+        out = funtk.fun2list(fun,self.n) # get list of pairings
+        for o in out:
+            i,j,delta = o[0],o[1],o[2] # get the parameters
+            mt = self.get_c(i)@self.get_c(j)*delta
+            m = m + mt + mt.H # add contributions
+        return m # return matrix
+    def add_pairing(self,fun):
+        self.h = self.h + self.get_pairing(fun) # add contribution
     def hubbard(self,m0):
         """
         Return the many body matrix for certain hubbard couplings
@@ -108,14 +145,18 @@ class MBFermion():
                 nj = cj.H*cj
                 m = m + ni*nj*m0[i,j] # add contribution
         return m # return many body hamiltonian
-    def correlator(self,pairs,wf):
+    def get_correlator(self,name="",pairs=[]):
         """
         Compute a set of correlators for a wavefunction
         """
-        out = [] # output list
+        namei,namej = operatornames.recognize(name) # get the operator
+        out = [] # empty list
+        self.get_gs() # get ground state
         for p in pairs: # loop over pairs
-            m = self.get_cd(p[0])*self.get_c(p[1]) # get matrix
-            raise # not finished yet
+            A = self.get_operator(namei,p[0]) # get matrix
+            A = A@self.get_operator(namej,p[1]) # get matrix
+            out.append(algebra.braket_wAw(self.wf0,A))
+        return np.array(out) # return array
     def get_operator(self,name,i):
         """
         Return a certain operator
@@ -133,7 +174,7 @@ class MBFermion():
         from ..algebra import kpm
         from .. import operatornames
         self.get_gs() # compute ground state
-        namei,namej = operatornames.recognize(None,name) # get the operator
+        namei,namej = operatornames.recognize(name) # get the operator
         namei = operatornames.hermitian(namei) # get the dagger
         A = self.get_operator(namei,i)
         B = self.get_operator(namej,j)
@@ -150,6 +191,24 @@ class MBFermion():
         return xs,np.conjugate(ys)/scale*np.pi*2 # return correlator
 
 
+
+
+
+
+def get_vijkl(self,f):
+    """
+    Return a generalized interaction in the many body basis
+    """
+    m = self.get_zero()
+    if f is None: return m
+    for i in range(self.n):
+      for j in range(self.n):
+        for k in range(self.n):
+          for l in range(self.n):
+              c = f(i,j,k,l) # get the value
+              if np.abs(c)>1e-8: # non zero
+                  m = m + c*self.get_cd(i)@self.get_c(j)@self.get_cd(k)@self.get_c(l)
+    return m
 
 
 

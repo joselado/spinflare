@@ -43,8 +43,7 @@ def dynamical_correlator(sc,h0,es=None,i=0,j=0,
   elif namej=="Y": sp = sc.syi[j]
   elif namej=="Z": sp = sc.szi[j]
   else: raise
-  if h0.shape[0]<100: mode = "full"
-  else: mode = "cv"
+  if mode=="full" and h0.shape[0]>100: mode = "cv"
   iden = identity(h0.shape[0],dtype=np.complex) # identity
   if mode=="full": iden = iden.todense() # dense matrix
   out = []
@@ -123,11 +122,17 @@ def dynamical_correlator_kpm(sc,h0,es=np.linspace(-1.0,4.0,300),i=0,j=0,
   vi = sm*csc(wf0).transpose() 
   vj = sp*csc(wf0).transpose() 
   h = -identity(h0.shape[0])*e0+h0
-  x = es # energies
-  scale = np.max([np.abs(e0),np.abs(emax)])*3.0
+  scale = (emax-e0)*1.2 # scale of the KPM method
+  if es is None: es = np.linspace(-scale,scale,n*4)*0.99
+  x = es[abs(es)<scale] # restrict the interval
   (xs,ys) = kpm.dm_vivj_energy(h,vi,vj,scale=scale,
                                     npol=n*4,ne=n*10,x=x)
-  return xs,np.conjugate(ys)/scale
+  # now interpolate the function
+  ys = ys/scale # normalize
+  from scipy.interpolate import interp1d
+  fr = interp1d(xs, ys.real,fill_value=0.0,bounds_error=False)
+  fi = interp1d(xs, ys.imag,fill_value=0.0,bounds_error=False)
+  return es,fr(es)+1j*fi(es) # return
 
 
 

@@ -2,24 +2,28 @@ from .manybodychain import Many_Body_Hamiltonian
 import numpy as np
 import scipy.linalg as lg
 from .pyfermion import mbfermion
+from .algebra import algebra
 
 
 class Fermionic_Hamiltonian(Many_Body_Hamiltonian):
     """Class for fermionic Hamiltonians"""
+    spinful = False
     def __init__(self,n,spinful=False):
+        self.spinful = spinful
         if spinful:
           Many_Body_Hamiltonian.__init__(self,[1 for i in range(n)])
         else:
           Many_Body_Hamiltonian.__init__(self,[0 for i in range(n)])
-        self.spinful = spinful
-    def get_density(self):
+    def get_density(self,**kwargs):
         """Return the electronic density"""
-        m = self.get_file("MEASURE_N.OUT") # get the file
-        return m.transpose()[1] # return density
-    def get_density_fluctuation(self):
+        pairs = [(i,i) for i in range(self.ns)]
+        return self.get_correlator(pairs=pairs,name="cdc",**kwargs).real
+    def get_density_fluctuation(self,**kwargs):
         """Return the electronic density"""
-        d = self.get_file("MEASURE_N.OUT").transpose()[1] # get the file
-        d2 = self.get_file("MEASURE_N2.OUT").transpose()[1] # get the file
+        d = self.get_density(**kwargs) # get the density
+        pairs = [(i,i) for i in range(self.ns)]
+        d2 = self.get_correlator(pairs=pairs,name="densitydensity",
+                **kwargs).real
         return d2-d**2 # return density fluctuations
     def get_delta(self):
         """
@@ -47,12 +51,25 @@ class Fermionic_Hamiltonian(Many_Body_Hamiltonian):
               t = self.hoppings[key]
               m[t.i,t.j] = t.g
         return m
-    def get_correlator(self,name="ccd",**kwargs):
+    def get_excited(self,mode="DMRG",**kwargs):
           """
           Wrapper for static correlator
           """
-          if name!="ccd": raise # not implemented
-          return Many_Body_Hamiltonian.get_correlator(self,name=name,**kwargs)
+          if mode=="DMRG": # using DMRG
+            return Many_Body_Hamiltonian.get_excited(self,**kwargs)
+          elif mode=="ED":
+            MBF = self.get_MBF() # get the object
+            return algebra.lowest_eigenvalues(MBF.h,**kwargs)
+    def get_correlator(self,name="cdc",mode="DMRG",**kwargs):
+          """
+          Wrapper for static correlator
+          """
+          if mode=="DMRG": # using DMRG
+            return Many_Body_Hamiltonian.get_correlator(self,name=name,**kwargs)
+          elif mode=="ED": # using ED
+            MBF = self.get_MBF() # get the object
+            return MBF.get_correlator(name=name,**kwargs)
+          else: raise
     def get_dynamical_correlator(self,name="densitydensity",
             mode="DMRG",**kwargs):
         """
@@ -95,23 +112,26 @@ class Fermionic_Hamiltonian(Many_Body_Hamiltonian):
         return get_gr_free(self,**kwargs)
     def gs_energy(self,mode="DMRG",**kwargs):
         """Compute ground state energy, overrriding the method"""
-        if mode=="DMRG": return Many_Body_Hamiltonian.gs_energy(self,**kwargs)
+        if mode=="DMRG": 
+            return Many_Body_Hamiltonian.gs_energy(self,**kwargs)
         elif mode=="ED": 
-            if np.max(np.abs(self.hubbard_matrix))<1e-6:
-                return self.gs_energy_free()
-            else: return self.get_MBF().get_gs()
+#            if np.max(np.abs(self.hubbard_matrix))<1e-6 and self.vijkl is None:
+#                return self.gs_energy_free()
+#            else:
+                MBF = self.get_MBF()
+                return algebra.lowest_eigenvalues(MBF.h,n=1)[0]
         else: raise # unrecognised
     def get_MBF(self):
         """
         Return the many body fermion object
         """
-        if not self.spinful: # spinless
-          m0 = self.hamiltonian_free() # free Hamiltonian
-          MBf = mbfermion.MBFermion(m0.shape[0]) # create object
-          MBf.add_hopping(m0)
-          MBf.add_hubbard(self.hubbard_matrix)
-          return MBf # return the object
-        else: raise 
+        m0 = self.hamiltonian_free() # free Hamiltonian
+        MBf = mbfermion.MBFermion(m0.shape[0]) # create object
+        MBf.add_hopping(m0)
+        MBf.add_pairing(self.pairing) # add pairing
+        MBf.add_hubbard(self.hubbard_matrix) # add hubbard term
+        MBf.add_vijkl(self.vijkl) # add generalized interaction
+        return MBf # return the object
     def get_kpm_scale(self):
         """Energy scale for KPM method"""
         return 4*self.ns*(2.+10*np.mean(np.abs(self.hubbard_matrix)))
@@ -168,6 +188,42 @@ def get_gr(self,delta=0.002,es=np.linspace(-10.0,10.0,800),i=0,j=0):
     return (es,y)
 
 
+
+
+class Spinful_Fermionic_Hamiltonian(Fermionic_Hamiltonian):
+    """
+    Class to deal with fermionic Hamiltonians with
+    spin degree of freedom
+    """
+    def __init__(self,n,spinful=False):
+        """ Rewrite the init method to take twice as many sites"""
+        Many_Body_Hamiltonian.__init__(self,[0 for i in range(2*n)])
+    def get_density(self,**kwargs):
+        """
+        Return the density in each site, summing over spin channels
+        """
+        ds = Fermionic_Hamiltonian.get_density(self,**kwargs) # get density
+        return np.array([ds[2*i]+ds[2*i+1] for i in range(len(ds)//2)])
+    def get_magnetization(self,**kwargs):
+        """Return magnetization"""
+        pairsxc = [(2*i,2*i+1) for i in range(self.ns//2)]
+        xc = Fermionic_Hamiltonian.get_correlator(self,pairs=pairsxc,
+                name="cdc",**kwargs)
+        mx = xc.real # get mx
+        my = xc.imag # get my
+        ds = Fermionic_Hamiltonian.get_density(self,**kwargs) # get density
+        mz = np.array([ds[2*i]-ds[2*i+1] for i in range(len(ds)//2)])
+        return np.array([mx,my,mz]).T # return magnetization
+    def set_hubbard(self,fun):
+        """
+        Add Hubbard interation in a spinful manner
+        """
+        def fh(i,j):
+            """Return Hubbard"""
+            if abs(i-j)==1: # first neighbors
+                if (i+j)%4==1: return fun(i,j) # same spinful site
+            return 0.0 # otherwise
+        Many_Body_Hamiltonian.set_hubbard(self,fh) # set hubbard
 
 
 

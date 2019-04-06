@@ -47,6 +47,21 @@ class App(QtGui.QMainWindow, interface.Ui_MainWindow):
       except:
         print(name,"not found, set to zero")
         return 0
+    def gettext(self,name):
+        """
+        Return text
+        """
+        try:
+          obj = getattr(self,name) # get the object
+          out = obj.toPlainText()
+          print(name,out)
+          return out
+        except: return ""
+    def settext(self,name,text):
+        """ Add text in the interface"""
+        getattr(self,name).setText(text) # get the object
+        app.processEvents() # update the interface
+
     def getbox(self,name):
       """Return the value of a box"""
       try:

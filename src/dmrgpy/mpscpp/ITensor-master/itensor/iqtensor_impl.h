@@ -2,8 +2,8 @@
 // Distributed under the ITensor Library License, Version 1.2
 //    (See accompanying LICENSE file.)
 //
-#ifndef __ITENSOR_IQTENSOR_IH
-#define __ITENSOR_IQTENSOR_IH
+#ifndef __ITENSOR_IQTENSOR_IMPL_H
+#define __ITENSOR_IQTENSOR_IMPL_H
 
 namespace itensor {
 
@@ -125,12 +125,11 @@ operator*(IndexVal const& iv, IQTensor const& T)
     return setElt(iv) * toITensor(T); 
     }
 
-template<typename... Inds>
-IQTensor
-combiner(IQIndex const& i1, 
-         Inds const&... inds)
+IQTensor inline
+delta(IQIndexSet const& is)
     {
-    return combiner(std::vector<IQIndex>{i1,inds...});
+    auto dat = QDiagReal(is,1.);
+    return IQTensor(std::move(is),std::move(dat));
     }
 
 template<typename... Inds>
@@ -138,9 +137,27 @@ IQTensor
 delta(IQIndex const& i1,
       Inds const&... inds)
     {
-    auto is = IQIndexSet(i1,inds...);
-    auto dat = QDiagReal(is,1.);
-    return IQTensor(std::move(is),std::move(dat));
+    return delta(IQIndexSet(i1,inds...));
+    }
+
+IQTensor inline
+delta(std::vector<IQIndex> const& is)
+    {
+    return delta(IQIndexSet(is));
+    }
+
+template<size_t N>
+IQTensor
+delta(std::array<IQIndex,N> const& is)
+    {
+    return delta(IQIndexSet(is));
+    }
+
+
+IQTensor inline
+delta(std::initializer_list<IQIndex> is)
+    {
+    return delta(IQIndexSet(is));
     }
 
 template<typename... Inds>

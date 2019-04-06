@@ -3,16 +3,21 @@
 static auto get_excited=[](auto H, auto sites, auto sweeps, int nexcited) {
   ofstream myfile;
   myfile.open("EXCITED.OUT"); // open file
-  auto psi0 = MPS(sites);
+  auto psi0 = MPS(sites); // first wavefunction
   auto en0 = dmrg(psi0,H,sweeps,{"Quiet=",true});
-  myfile << std::setprecision(8) << en0 << endl;
+  auto psimax = MPS(sites); // second wavefunction
+  auto enmax = dmrg(psimax,-1*H,sweeps,{"Quiet=",true});
+  myfile << std::setprecision(20) << en0 << endl;
   int i; 
   auto wfs = std::vector<MPS>(nexcited);
   for (i=0;i<nexcited;i++) wfs.at(i) = psi0; // initialize with the GS
   auto psi1 = MPS(sites) ; // create new wave
+  // lagrange multiplier
+  float weight = bandwidth(sites,H)*get_float_value("scale_lagrange_excited"); 
   for (i=1;i<nexcited;i++)  { 
     // now compute a new excited state
-    en0 = dmrg(psi1,H,wfs,sweeps,{"Quiet=",true,"Weight=",20.0}); // new energy
+    // new energy
+    en0 = dmrg(psi1,H,wfs,sweeps,{"Quiet=",true,"Weight=",weight}); 
     wfs.at(i) = psi1 ; // store this wavefunction
     psi1 = MPS(sites) ; // new random wavefunction
     myfile << std::setprecision(8) << en0 << endl; // write energy 

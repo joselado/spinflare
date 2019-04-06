@@ -1,4 +1,5 @@
 import numpy as np
+from . import funtk
 
 
 def write_hamiltonian(self):
@@ -8,6 +9,7 @@ def write_hamiltonian(self):
     write_spinful_hoppings(self)  # write the hoppings
     write_pairing(self)  # write the pairing
     write_hubbard(self)  # write hubbard terms
+    write_vijkl(self)  # write vijkl terms
     write_fields(self) # write the fields
 
 
@@ -85,18 +87,17 @@ def write_spinful_hoppings(self):
 
 
 def write_pairing(self):
-  """Write exchange in a file"""
+  """
+  Write pairings in a file
+  """
+  cs = funtk.fun2list(self.pairing,self.ns) # get the list with couplings
   fo = open("pairing.in","w")
-  cs = self.pairing
   fo.write(str(len(cs))+"\n")
-  for key in self.pairing: # loop
-    c = self.pairing[key] # loop
-    if self.sites[c.i]!=1: raise
-    if self.sites[c.j]!=1: raise
-    fo.write(str(c.i)+"  ")
-    fo.write(str(c.j)+"  ")
-    fo.write(str(c.g.real)+"  ")
-    fo.write(str(c.g.imag)+"\n")
+  for c in cs: # loop
+    fo.write(str(c[0])+"  ")
+    fo.write(str(c[1])+"  ")
+    fo.write(str(c[2].real)+"  ")
+    fo.write(str(c[2].imag)+"\n")
   fo.close()
 
 
@@ -159,15 +160,6 @@ def write_exchange(self):
 
 
 
-def write_correlators(pairs):
-  """Write the pairs of correlators in a file"""
-  fo = open("correlators.in","w") # open the file
-  fo.write(str(len(pairs))+"\n") # write in a file
-  for p in pairs:
-    # the first has to be smaller than the second
-    fo.write(str(p[0])+"  "+str(p[1])+"\n")
-  fo.close()
-
 
 
 
@@ -198,4 +190,33 @@ def write_sweeps(self):
   fo.write("maxm = "+str(self.sweep["maxm"])+"\n")
   fo.write("cutoff = "+str(self.sweep["cutoff"])+"\n}\n")
   fo.close()
+
+
+
+
+def write_vijkl(self):
+  """Write exchange in a file"""
+  fo = open("vijkl.in","w")
+  if self.vijkl is None: # nothing provided
+      fo.write("0\n") 
+  elif callable(self.vijkl): # function provided
+      out = [] # empty list
+      for i in range(self.ns):
+        for j in range(self.ns):
+          for k in range(self.ns):
+            for l in range(self.ns):
+                c = self.vijkl(i,j,k,l) # get coupling
+                if np.abs(c)>1e-6: # nonzero
+                  o = str(i) + "  "
+                  o += str(j) + "  "
+                  o += str(k) + "  "
+                  o += str(l) + "  "
+                  o += str(c) + "  "
+                  out.append(o) # store
+      fo.write(str(len(out))+"\n") # number of terms
+      for o in out:
+          fo.write(o+"\n")
+  else: raise # not implemented  
+  fo.close() # close file
+
 
