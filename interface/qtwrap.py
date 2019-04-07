@@ -61,6 +61,8 @@ class App(QtGui.QMainWindow, interface.Ui_MainWindow):
         """ Add text in the interface"""
         getattr(self,name).setText(text) # get the object
         app.processEvents() # update the interface
+    def set_image(self,name,path):
+        set_image(self,name,path)
 
     def getbox(self,name):
       """Return the value of a box"""
@@ -99,7 +101,7 @@ def is_checked(name):
 
 
 
-def set_image(name,path):
+def set_image(form,name,path):
   """Set a certain image"""
   label = getattr(form,name) # get the object
   pixmap = QPixmap(path)

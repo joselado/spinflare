@@ -15,7 +15,7 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_28">
-    <item row="0" column="0">
+    <item row="1" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="minimumSize">
        <size>
@@ -456,7 +456,7 @@
       </widget>
      </widget>
     </item>
-    <item row="0" column="1">
+    <item row="1" column="1">
      <widget class="QTabWidget" name="tabWidget_2">
       <property name="minimumSize">
        <size>
@@ -465,7 +465,7 @@
        </size>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="tab_2">
        <attribute name="title">
@@ -608,7 +608,7 @@
         <item row="0" column="0">
          <widget class="QTabWidget" name="tabWidget_4">
           <property name="currentIndex">
-           <number>0</number>
+           <number>1</number>
           </property>
           <widget class="QWidget" name="tab_11">
            <attribute name="title">
@@ -640,7 +640,7 @@
                  <string>Compute and show the dynamical correlator</string>
                 </property>
                 <property name="text">
-                 <string>Show correlator</string>
+                 <string>Show dynamical correlator</string>
                 </property>
                </widget>
               </item>
@@ -685,7 +685,7 @@
             <item row="0" column="0">
              <layout class="QGridLayout" name="gridLayout_13">
               <item row="0" column="1">
-               <widget class="QComboBox" name="comboBox_2">
+               <widget class="QComboBox" name="dynamic_arrangement">
                 <item>
                  <property name="text">
                   <string>Onsite</string>
@@ -707,6 +707,39 @@
                <widget class="QLabel" name="label_12">
                 <property name="text">
                  <string>Type</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QPushButton" name="get_dynamical_correlator_map">
+                <property name="text">
+                 <string>Show dynamical correlator map</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QComboBox" name="dynamic_type_map">
+                <item>
+                 <property name="text">
+                  <string>XX</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>YY</string>
+                 </property>
+                </item>
+                <item>
+                 <property name="text">
+                  <string>ZZ</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="label_30">
+                <property name="text">
+                 <string>Correlator</string>
                 </property>
                </widget>
               </item>
@@ -770,6 +803,19 @@
         </item>
        </layout>
       </widget>
+     </widget>
+    </item>
+    <item row="0" column="0">
+     <widget class="QLabel" name="spinflare_logo">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>100</height>
+       </size>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
      </widget>
     </item>
    </layout>

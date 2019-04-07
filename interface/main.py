@@ -9,6 +9,13 @@ from dmrgpy import spinchain
 app = qtwrap.App() # this is the main interface
 
 
+# set the logo
+def set_logo():
+  logopath = os.path.dirname(os.path.realpath(__file__))+"/../logo/spinflare.png"
+  app.set_image("spinflare_logo",logopath)
+
+set_logo()
+
 def execute_script(name):
   path = os.path.dirname(os.path.realpath(__file__)) + "/../utilities/"
   os.system(path+name+" &") # execute that script
@@ -180,6 +187,7 @@ def getsc(app):
     sc.set_exchange(fj) # add the exchange
     sc.set_fields(fb) # set the magnetic field
     sc.maxm = int(app.get("maxm"))
+    sc.kpmmaxm = int(app.get("maxm"))
     sc.nsweeps = int(app.get("nsweeps"))
     return sc
 
@@ -207,10 +215,39 @@ def get_dynamical_correlator_single():
     delta = app.get("smearing_dynamic") # delta
     ii = int(app.get("dynamic_site_i_single")) # delta
     (es,ds) = sc.get_dynamical_correlator(delta=delta,name=cname,i=ii,j=ii)
-    np.savetxt("STATIC_CORRELATOR.OUT",
+    np.savetxt("DYNAMICAL_CORRELATOR.OUT",
             np.array([es,ds.real,ds.imag]).T)
     
     execute_script("sf-dynamical_correlator DYNAMICAL_CORRELATOR.OUT")
+
+
+
+def get_dynamical_correlator_map():
+    """Dynamic correlator in a single site"""
+    sc = getsc(app) # get the spin chain object
+    cname = app.getbox("dynamic_type_map") # operator
+    delta = app.get("smearing_dynamic") # delta
+    pairs = get_pairs(app,sc.ns,"dynamic_arrangement") # get the pairs
+    fo = open("DYNAMICAL_CORRELATOR_MAP.OUT","w")
+    ip = 0
+    for p in pairs:
+      (es,ds) = sc.get_dynamical_correlator(delta=delta,name=cname,
+              i=p[0],j=p[1])
+      print("Doing",p)
+      for (ei,di) in zip(es,ds):
+          fo.write(str(ip)+"   ")
+          fo.write(str(ei)+"   ")
+          fo.write(str(di.real)+"   ")
+          fo.write(str(di.imag)+"\n")
+      fo.flush()
+      ip += 1
+    fo.close()
+    execute_script("sf-dynamical_correlator-map DYNAMICAL_CORRELATOR_MAP.OUT")
+
+
+
+
+
 
 
 def get_magnetization():
@@ -246,6 +283,8 @@ def get_pairs(app,n,name):
       pairs = [(i,i+1) for i in range(n-1)]
     elif m=="First neighbor left":
       pairs = [(i+1,i) for i in range(n-1)]
+    elif m=="Onsite":
+      pairs = [(i,i) for i in range(n)]
     else: raise
     return pairs
 
@@ -257,6 +296,7 @@ signals = dict()
 signals["get_static_correlator"] = get_static_correlator
 signals["initialize_spins"] = initialize_spins
 signals["get_dynamical_correlator_single"] = get_dynamical_correlator_single
+signals["get_dynamical_correlator_map"] = get_dynamical_correlator_map
 signals["get_magnetization"] = get_magnetization
 
 app.connect_clicks(signals)
