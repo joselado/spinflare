@@ -48,6 +48,18 @@ def text2list(app,name):
 
 
 
+def set_data(name):
+    """
+    Set the latest data in the window
+    """
+    m = np.genfromtxt(name) # get the data
+    np.savetxt("DATA.OUT",m,fmt='%.5f') # save the data
+    text = open("DATA.OUT").read() # read the text
+    text = "# "+name+"\n" + text.replace(" ","   ") # name of the file
+    app.settext("data_box",text) # set that text
+
+
+
 
 def spin2text(app,spins):
     """Convert a list of spins into a text"""
@@ -202,6 +214,7 @@ def get_static_correlator():
     cname = app.getbox("static_type") # actual operator for the correlator
     out = sc.get_correlator(pairs,name=cname) # get the correlator
     np.savetxt("STATIC_CORRELATOR.OUT",np.array([range(len(pairs)),out.real,out.imag]).T)
+    set_data("STATIC_CORRELATOR.OUT")
     execute_script("sf-correlator STATIC_CORRELATOR.OUT")
 
 
@@ -218,6 +231,7 @@ def get_dynamical_correlator_single():
     np.savetxt("DYNAMICAL_CORRELATOR.OUT",
             np.array([es,ds.real,ds.imag]).T)
     
+    set_data("DYNAMICAL_CORRELATOR.OUT")
     execute_script("sf-dynamical_correlator DYNAMICAL_CORRELATOR.OUT")
 
 
@@ -242,6 +256,7 @@ def get_dynamical_correlator_map():
       fo.flush()
       ip += 1
     fo.close()
+    set_data("DYNAMICAL_CORRELATOR_MAP.OUT")
     execute_script("sf-dynamical_correlator-map DYNAMICAL_CORRELATOR_MAP.OUT")
 
 
@@ -260,6 +275,7 @@ def get_magnetization():
     elif name=="Z": mi = mz
     else: raise
     np.savetxt("MAGNETIZATION.OUT",np.array([inds,mi]).T)
+    set_data("MAGNETIZATION.OUT")
     execute_script("sf-magnetization MAGNETIZATION.OUT")
 
     
