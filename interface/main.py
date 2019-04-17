@@ -18,7 +18,7 @@ set_logo()
 
 def execute_script(name):
   path = os.path.dirname(os.path.realpath(__file__)) + "/../utilities/"
-  os.system(path+name+" &") # execute that script
+  os.system("python "+path+name+" &") # execute that script
 
 
 def text2spin(app):
