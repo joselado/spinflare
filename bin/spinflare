@@ -2,11 +2,10 @@
 
 
 import os
-import numpy as np
 
 path = os.path.dirname(os.path.realpath(__file__))
 os.chdir("/tmp/")
-name = "spinflare_tmp_"+str(np.random.randint(100000)) # name of the folder
+name = "spinflare_tmp" # name of the folder
 os.system("mkdir "+name) # create folder
 os.chdir(name) # go to folder
 os.system("python "+path+"/../interface/main.py")
