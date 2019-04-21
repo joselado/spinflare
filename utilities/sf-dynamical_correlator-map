@@ -67,7 +67,8 @@ miny = np.min(m[1])
 maxy = np.max(m[1])
 plt.imshow(z_inter, aspect='auto', origin='lower',cmap = plt.get_cmap("hot"), extent = ( minx, maxx, miny, maxy),interpolation='nearest',vmax=vmax)
 
-plt.xlabel("$ |\\langle S_n \delta(\omega - H +E_0) S_m \\rangle |$")
+plt.xlabel("Site")
+plt.title("$ |\\langle S_n \delta(\omega - H +E_0) S_m \\rangle |$")
 plt.ylabel("$\omega$ [J]")
 
 
