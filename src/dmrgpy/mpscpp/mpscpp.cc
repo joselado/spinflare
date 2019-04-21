@@ -11,6 +11,7 @@ using namespace std;
 
 
 #include"check_task.h" // read the different tasks
+#include"mpsalgebra.h" // functions to deal with MPS
 #include"get_sweeps.h" // get the sweep info
 #include"bandwidth.h"  // return the bandwidth of the hamiltonian
 #include"get_gap.h" // compute the gap
@@ -30,6 +31,7 @@ using namespace std;
 #include"time_evolution.h" // Time evolution
 #include"reduced_dm.h" // Reduced density matrix
 #include"dynamical_correlator_excited.h" // dynamical correlator with exited
+#include"vev.h" // Reduced density matrix
 
 
 int 
@@ -71,6 +73,7 @@ main()
     if (check_task("overlap"))  compute_overlap() ; // compute overlap
     if (check_task("time_evolution"))  quench(sites) ; // time evolution
     if (check_task("density_matrix"))  reduced_dm() ; // DM
+    if (check_task("vev"))  vev() ; // Vacuum expectation value
     if (check_task("dynamical_correlator_excited"))  
 	    dynamical_correlator_excited(); // DM
     system("rm -f ERROR") ; // remove error file

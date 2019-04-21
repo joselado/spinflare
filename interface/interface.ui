@@ -89,7 +89,7 @@
           <item row="2" column="0">
            <widget class="QPushButton" name="initialize_spins">
             <property name="text">
-             <string>Initialize spins</string>
+             <string>Full spin initialization</string>
             </property>
            </widget>
           </item>
@@ -411,7 +411,7 @@
       </widget>
       <widget class="QWidget" name="tab_10">
        <attribute name="title">
-        <string>Params</string>
+        <string>Parameters</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_29">
         <item row="0" column="0">
@@ -448,6 +448,27 @@
             <property name="text">
              <string>Number of sweeps</string>
             </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_31">
+            <property name="text">
+             <string>Parallelization</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QComboBox" name="parallelization">
+            <item>
+             <property name="text">
+              <string>No</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Yes</string>
+             </property>
+            </item>
            </widget>
           </item>
          </layout>

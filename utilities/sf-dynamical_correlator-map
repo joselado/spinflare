@@ -20,7 +20,7 @@ name = sys.argv[1]  # name of the file
 m = np.genfromtxt(name).transpose()
 x = m[0]
 y = m[1]
-z = m[2]
+z = np.abs(m[2]+1j*m[3])
 
 # get dimensions assuming uniform grid
 
@@ -67,7 +67,7 @@ miny = np.min(m[1])
 maxy = np.max(m[1])
 plt.imshow(z_inter, aspect='auto', origin='lower',cmap = plt.get_cmap("hot"), extent = ( minx, maxx, miny, maxy),interpolation='nearest',vmax=vmax)
 
-plt.xlabel("$\\langle S_n \delta(\omega - H +E_0) S_m \\rangle$")
+plt.xlabel("$ |\\langle S_n \delta(\omega - H +E_0) S_m \\rangle |$")
 plt.ylabel("$\omega$ [J]")
 
 

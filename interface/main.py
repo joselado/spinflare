@@ -244,17 +244,39 @@ def get_dynamical_correlator_map():
     pairs = get_pairs(app,sc.ns,"dynamic_arrangement") # get the pairs
     fo = open("DYNAMICAL_CORRELATOR_MAP.OUT","w")
     ip = 0
-    for p in pairs:
-      (es,ds) = sc.get_dynamical_correlator(delta=delta,name=cname,
-              i=p[0],j=p[1])
-      print("Doing",p)
+    sc.get_gs() # compute ground state
+    #### Parallel execution ###
+    if app.getbox("parallelization")=="Yes": # parallel calculation
+        def fm(p): # function to call
+          sc0 = sc.clone() # clone directory
+          def f(): # function to call
+            print("Computing DYNCORR for",p)
+            out = sc0.get_dynamical_correlator(delta=delta,name=cname,
+                    i=p[0],j=p[1])
+            sc0.clean()
+            return out
+          return f # return dummy function
+        from dmrgpy import parallel
+        from dmrgpy import parallel
+        parallel.cores = parallel.maxcpu # set to the maximum value
+        outs = parallel.multicall([fm(p) for p in pairs])
+    #### Serial execution ####
+    elif app.getbox("parallelization")=="No":
+      def f(p): # function to call
+        print("Computing DYNCORR for",p)
+        return sc.get_dynamical_correlator(delta=delta,name=cname,
+                i=p[0],j=p[1])
+        return out
+      outs = [f(p) for p in pairs] # compute all the outputs
+    else: raise # something wrong
+    for ip in range(len(outs)): # loop over outputs
+      (es,ds) = outs[ip] # get those 
       for (ei,di) in zip(es,ds):
           fo.write(str(ip)+"   ")
           fo.write(str(ei)+"   ")
           fo.write(str(di.real)+"   ")
           fo.write(str(di.imag)+"\n")
       fo.flush()
-      ip += 1
     fo.close()
     set_data("DYNAMICAL_CORRELATOR_MAP.OUT")
     execute_script("sf-dynamical_correlator-map DYNAMICAL_CORRELATOR_MAP.OUT")

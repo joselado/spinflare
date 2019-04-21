@@ -1,5 +1,6 @@
 from __future__ import print_function
 import numpy as np
+from . import multioperator
 
 def get_moments_dmrg(self,n=1000):
   """Get the moments with DMRG"""
@@ -23,22 +24,41 @@ def get_moments_dynamical_correlator_dmrg(self,i=0,j=0,
   if i>=self.ns: raise 
   if j>=self.ns: raise 
   if delta<0.0: raise 
-  # go on
-  try: # select the right operators, be consistent with mpscpp.x
-      from . import operatornames
-      namei,namej = operatornames.recognize(name)
-      namei = operatornames.hermitian(namei) # get the Hermitian operator
-  except:
-      print("Dynamical correlator not recognised")
-      raise
-  task= {       "kpmmaxm":str(self.kpmmaxm),
-                "site_i_kpm":str(i),"site_j_kpm":str(j),
+  self.get_gs() # compute ground state
+  # define the dictionary
+  task = {      "dynamical_correlator": "true",
+                "kpmmaxm":str(self.kpmmaxm),
                 "kpm_scale":str(self.kpm_scale),
+                "kpm_accelerate":self.kpm_accelerate,
                 "kpm_n_scale":str(self.kpm_n_scale),
                 "kpm_delta":str(delta),
                 "kpm_cutoff":str(self.kpmcutoff),
-                "kpm_operator_i":namei,"kpm_operator_j":namej}
-  self.setup_task("dynamical_correlator",task=task) 
+                }
+  # go on, check the kind of input used to define the correlator
+  if type(name[0])==multioperator.MultiOperator: 
+      taski = name[0].get_dict()
+      taskj = name[1].get_dict()
+      for t in taski: task[t] = taski[t]
+      for t in taskj: task[t] = taskj[t]
+      task["kpm_multioperator_i"] = "true"
+      task["kpm_multioperator_j"] = "true"
+  else: # use a keyword, this is the classical way
+    try: # select the right operators, be consistent with mpscpp.x
+        from . import operatornames
+        namei,namej = operatornames.recognize(name)
+        namei = operatornames.hermitian(namei) # get the Hermitian operator
+    except:
+        print("Dynamical correlator not recognised")
+        raise
+    # setup the necessary elements in the tasks
+    task["kpm_operator_i"] = namei
+    task["kpm_operator_j"] = namej
+    task["site_i_kpm"] = str(i)
+    task["site_j_kpm"] = str(j)
+    task["kpm_multioperator_i"] = "false"
+    task["kpm_multioperator_j"] = "false"
+  self.task = task # assign tasks
+  self.write_task() 
   self.write_hamiltonian() # write the Hamiltonian to a file
   self.run() # perform the calculation
   m = self.execute(lambda: np.genfromtxt("KPM_MOMENTS.OUT").transpose())
@@ -95,7 +115,6 @@ def get_dynamical_correlator(self,n=1000,mode="DMRG",i=0,j=0,
   """
   Compute a dynamical correlator using the KPM-DMRG method
   """
-  self.to_folder() # go to temporal folder
   if mode=="DMRG": 
 # get the moments
     mus = get_moments_dynamical_correlator_dmrg(self,i=i,j=j,
@@ -128,7 +147,6 @@ def get_dynamical_correlator(self,n=1000,mode="DMRG",i=0,j=0,
       (xs,ys) = pychain_correlator.dynamical_correlator(sc,h,delta=delta,i=i,
                         j=j,namei=name[0],namej=name[1])
     else: raise
-  self.to_origin() # go to origin folder
   if es is None:
     (xs,ys) = restrict_interval(xs,ys,window) # restrict the interval
   else:
@@ -141,7 +159,7 @@ def get_dynamical_correlator(self,n=1000,mode="DMRG",i=0,j=0,
       xs = np.linspace(window[0],window[1],ne)
   else: xs = np.array(es).copy() # copy input array
   ys = fr(xs) + 1j*fi(xs) # evaluate the interpolator
-  np.savetxt("DYNAMICAL_CORRELATOR.OUT",np.matrix([xs.real,ys.real,ys.imag]).T)
+#  np.savetxt("DYNAMICAL_CORRELATOR.OUT",np.matrix([xs.real,ys.real,ys.imag]).T)
   return (xs,ys)
 
 
