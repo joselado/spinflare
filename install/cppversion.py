@@ -14,7 +14,8 @@ def cppversion():
 
 
 def correct_version():
-    out = cppversion() # get the version
+    try: out = cppversion() # get the version
+    except: return False
     if out[0]>=6: return True
     else: return False
 
