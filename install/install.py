@@ -12,7 +12,7 @@ else: # C++ compiler is not the right one
     autoinstallubuntu.install() # install dependencies
     # replace the compiler in options.mk
     out = open("options.mk").read().replace("CCCOM=g++","CCCOM=g++-6")
-#exit()
+    open("options.mk","w").write(out) # write new file
 # now do the compilation
 os.system("make clean ")
 os.system("make")
