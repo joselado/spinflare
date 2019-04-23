@@ -28,7 +28,7 @@ def text2spin(app):
     out2 = [] # empty list
     for o in out:
         if len(o)>0: out2.append(o) # store
-    t2s = {"1/2":2,"1":3,"3/2":4,"2":5,"3/2":6}
+    t2s = {"1/2":2,"1":3,"3/2":4,"2":5,"5/2":6}
     spins = [t2s[t] for t in out2] # spins using a dictionary
     return spins
 
