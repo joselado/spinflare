@@ -313,7 +313,25 @@ def get_gs_convergence():
         sc.maxm = int(m) # overwrite bond dimension
         es.append(sc.gs_energy()) # compute ground state energy
     np.savetxt("ENERGY_VS_MAXM.OUT",np.array([ms,es]).T)
+    set_data("ENERGY_VS_MAXM.OUT")
     execute_script("sf-gs-energy-maxm ENERGY_VS_MAXM.OUT")
+
+
+
+def get_excited_states():
+    """Get the ground state converge with bond dimension"""
+    sc = getsc(app) # get the spin chain object
+    n = int(app.get("num_excited"))
+    es = sc.get_excited(n=n) # get excited states
+    es = np.sort(es) # sort energies
+    rmgs = app.getbox("substract_gs_excited")=="Yes"
+    args = "" # arguments for the plotting
+    if rmgs: 
+        es -= es[0] # remove ground state energy
+        args += " --ylabel GS" 
+    np.savetxt("EXCITED.OUT",np.array(es))
+    set_data("EXCITED.OUT")
+    execute_script("sf-excited-states --input EXCITED.OUT"+args)
 
 
 
@@ -355,6 +373,7 @@ signals["get_dynamical_correlator_single"] = get_dynamical_correlator_single
 signals["get_dynamical_correlator_map"] = get_dynamical_correlator_map
 signals["get_magnetization"] = get_magnetization
 signals["get_gs_convergence"] = get_gs_convergence
+signals["get_excited_states"] = get_excited_states
 
 app.connect_clicks(signals)
 

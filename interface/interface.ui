@@ -884,6 +884,68 @@
         </item>
        </layout>
       </widget>
+      <widget class="QWidget" name="tab_17">
+       <attribute name="title">
+        <string>Excitated states</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_33">
+        <item row="0" column="0">
+         <layout class="QGridLayout" name="gridLayout_32">
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="num_excited">
+            <property name="toolTip">
+             <string>Number of excited states to compute</string>
+            </property>
+            <property name="text">
+             <string>4</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_35">
+            <property name="text">
+             <string>Number of excited states</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0" colspan="2">
+           <widget class="QPushButton" name="get_excited_states">
+            <property name="toolTip">
+             <string>Compute and show the excited states</string>
+            </property>
+            <property name="text">
+             <string>Show excited states</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QComboBox" name="substract_gs_excited">
+            <property name="toolTip">
+             <string>Choose whether if the ground state energy should be substracted from the energies of the excited states</string>
+            </property>
+            <item>
+             <property name="text">
+              <string>No</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Yes</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_36">
+            <property name="text">
+             <string>Substract GS energy</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
       <widget class="QWidget" name="tab_15">
        <attribute name="title">
         <string>Data</string>
