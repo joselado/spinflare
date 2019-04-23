@@ -298,7 +298,7 @@ def get_magnetization():
     else: raise
     np.savetxt("MAGNETIZATION.OUT",np.array([inds,mi]).T)
     set_data("MAGNETIZATION.OUT")
-    execute_script("sf-magnetization MAGNETIZATION.OUT")
+    execute_script("sf-magnetization --input MAGNETIZATION.OUT --ylabel "+name)
 
 
 def get_gs_convergence():

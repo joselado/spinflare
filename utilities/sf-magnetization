@@ -14,12 +14,31 @@ fig.set_facecolor("white")
 
 
 
-name = sys.argv[1]
+# get the label for the y axis
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--ylabel",default="SS")
+parser.add_argument("--input",default="STATIC_CORRELATOR.OUT")
+args = parser.parse_args() # get the arguments
+name = args.input # input file
+# define the ylabel
+bra = "$\\langle GS |"
+ket = "| GS \\rangle$"
+#if args.ylabel=="SS": ylabel = bra+"\\vec S_i \\cdot \\vec S_j"+ket
+if args.ylabel=="X": ylabel = bra+"S^x_i"+ket
+elif args.ylabel=="Y": ylabel = bra+"S^y_i"+ket
+elif args.ylabel=="Z": ylabel = bra+"S^z_i"+ket
+else: raise
+
+
+
+
+
 m = np.genfromtxt(name).transpose()
 
 plt.plot(m[0],m[1],marker="o",c="blue")
 plt.xlabel("Site")
-plt.ylabel("$\\langle S_n \\rangle$")
+plt.ylabel(ylabel)
 plt.ylim([np.min(m[1])-0.1,np.max([m[1]])+0.1])
 plt.show()
 
