@@ -34,9 +34,13 @@ fig.set_facecolor("white")
 
 es = np.genfromtxt(name) # get data
 
-plt.plot(range(len(es)),es,marker="o",c="blue")
+plt.scatter(range(len(es)),es,marker="o",c="blue",s=80)
+for e in es:
+  xs = np.linspace(-1,len(es)+1,20)
+  plt.plot(xs,xs*0.+e,c="red")
 plt.xlabel("Eigenstate index")
 plt.ylabel(ylabel)
+plt.xlim([-0.1,len(es)-0.9])
 plt.show()
 
 

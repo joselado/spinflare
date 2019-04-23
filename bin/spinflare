@@ -1,11 +1,15 @@
 #!/usr/bin/python
-
-
 import os
 
 path = os.path.dirname(os.path.realpath(__file__))
 os.chdir("/tmp/")
 name = "spinflare_tmp" # name of the folder
+try:
+    import random
+    name = name + "_"+str(random.randint(0,100000)) # random folder
+except: pass
+
+print("Executing calculations in ",name)
 os.system("mkdir "+name) # create folder
 os.chdir(name) # go to folder
 os.system("python "+path+"/../interface/main.py")

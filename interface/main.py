@@ -92,7 +92,6 @@ def initialize_spins():
 def initialize_exchange():
     """Initialize the table of exchange constants"""
     spins = text2spin(app) # get the spins
-    ctype = app.getbox("coupling_type") # type of coupling
     def getlist(jc):
         text = "" # initialize
         for i in range(len(spins)-1): # loop
