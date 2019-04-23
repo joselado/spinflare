@@ -215,7 +215,7 @@ def get_static_correlator():
     out = sc.get_correlator(pairs,name=cname) # get the correlator
     np.savetxt("STATIC_CORRELATOR.OUT",np.array([range(len(pairs)),out.real,out.imag]).T)
     set_data("STATIC_CORRELATOR.OUT")
-    execute_script("sf-correlator STATIC_CORRELATOR.OUT")
+    execute_script("sf-correlator --input STATIC_CORRELATOR.OUT   --ylabel "+cname)
 
 
 
@@ -232,7 +232,7 @@ def get_dynamical_correlator_single():
             np.array([es,ds.real,ds.imag]).T)
     
     set_data("DYNAMICAL_CORRELATOR.OUT")
-    execute_script("sf-dynamical_correlator DYNAMICAL_CORRELATOR.OUT")
+    execute_script("sf-dynamical_correlator --input DYNAMICAL_CORRELATOR.OUT  --ylabel "+cname)
 
 
 
@@ -279,7 +279,7 @@ def get_dynamical_correlator_map():
       fo.flush()
     fo.close()
     set_data("DYNAMICAL_CORRELATOR_MAP.OUT")
-    execute_script("sf-dynamical_correlator-map DYNAMICAL_CORRELATOR_MAP.OUT")
+    execute_script("sf-dynamical_correlator-map --input DYNAMICAL_CORRELATOR_MAP.OUT  --ylabel "+cname)
 
 
 
@@ -299,6 +299,24 @@ def get_magnetization():
     np.savetxt("MAGNETIZATION.OUT",np.array([inds,mi]).T)
     set_data("MAGNETIZATION.OUT")
     execute_script("sf-magnetization MAGNETIZATION.OUT")
+
+
+def get_gs_convergence():
+    """Get the ground state converge with bond dimension"""
+    maxm_min = int(app.get("maxm_min"))
+    maxm_max = int(app.get("maxm_max"))
+    maxm_step = int(app.get("maxm_step"))
+    ms = np.array(range(maxm_min,maxm_max,maxm_step))
+    es = []
+    for m in ms:
+        sc = getsc(app) # get the spin chain object
+        sc.maxm = int(m) # overwrite bond dimension
+        es.append(sc.gs_energy()) # compute ground state energy
+    np.savetxt("ENERGY_VS_MAXM.OUT",np.array([ms,es]).T)
+    execute_script("sf-gs-energy-maxm ENERGY_VS_MAXM.OUT")
+
+
+
 
     
 def initialize_interface():
@@ -336,6 +354,7 @@ signals["initialize_spins"] = initialize_spins
 signals["get_dynamical_correlator_single"] = get_dynamical_correlator_single
 signals["get_dynamical_correlator_map"] = get_dynamical_correlator_map
 signals["get_magnetization"] = get_magnetization
+signals["get_gs_convergence"] = get_gs_convergence
 
 app.connect_clicks(signals)
 

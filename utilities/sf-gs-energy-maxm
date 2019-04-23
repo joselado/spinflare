@@ -18,8 +18,8 @@ name = sys.argv[1]
 m = np.genfromtxt(name).transpose()
 
 plt.plot(m[0],m[1],marker="o",c="blue")
-plt.xlabel("Site")
-plt.ylabel("$\\langle S_n \\rangle$")
+plt.xlabel("Bond dimension")
+plt.ylabel("Ground state energy")
 plt.ylim([np.min(m[1])-0.1,np.max([m[1]])+0.1])
 plt.show()
 

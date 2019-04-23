@@ -486,11 +486,71 @@
        </size>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>2</number>
       </property>
+      <widget class="QWidget" name="tab_16">
+       <attribute name="title">
+        <string>Convergence</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_31">
+        <item row="0" column="0">
+         <layout class="QGridLayout" name="gridLayout_30">
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="maxm_min">
+            <property name="text">
+             <string>5</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="maxm_max">
+            <property name="text">
+             <string>30</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLineEdit" name="maxm_step">
+            <property name="text">
+             <string>5</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_32">
+            <property name="text">
+             <string>Minimum bond dimension</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_33">
+            <property name="text">
+             <string>Maximum bond dimension</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_34">
+            <property name="text">
+             <string>Step</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="QPushButton" name="get_gs_convergence">
+            <property name="text">
+             <string>Show ground state energy convergence</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
       <widget class="QWidget" name="tab_2">
        <attribute name="title">
-        <string>Ground state</string>
+        <string>Magnetization</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_22">
         <item row="0" column="0">
@@ -521,10 +581,10 @@
             </item>
            </widget>
           </item>
-          <item row="1" column="1">
+          <item row="1" column="0" colspan="2">
            <widget class="QPushButton" name="get_magnetization">
             <property name="text">
-             <string>Plot magnetization</string>
+             <string>Show magnetization</string>
             </property>
            </widget>
           </item>
@@ -607,13 +667,13 @@
             </item>
            </widget>
           </item>
-          <item row="2" column="0">
+          <item row="2" column="0" colspan="2">
            <widget class="QPushButton" name="get_static_correlator">
             <property name="toolTip">
              <string>Compute and show the static correlator</string>
             </property>
             <property name="text">
-             <string>Show</string>
+             <string>Show static correlator</string>
             </property>
            </widget>
           </item>
@@ -731,13 +791,6 @@
                 </property>
                </widget>
               </item>
-              <item row="2" column="1">
-               <widget class="QPushButton" name="get_dynamical_correlator_map">
-                <property name="text">
-                 <string>Show dynamical correlator map</string>
-                </property>
-               </widget>
-              </item>
               <item row="1" column="1">
                <widget class="QComboBox" name="dynamic_type_map">
                 <item>
@@ -761,6 +814,13 @@
                <widget class="QLabel" name="label_30">
                 <property name="text">
                  <string>Correlator</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0" colspan="2">
+               <widget class="QPushButton" name="get_dynamical_correlator_map">
+                <property name="text">
+                 <string>Show dynamical correlator map</string>
                 </property>
                </widget>
               </item>

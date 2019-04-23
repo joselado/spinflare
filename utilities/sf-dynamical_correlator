@@ -14,13 +14,35 @@ fig.set_facecolor("white")
 
 
 
-name = sys.argv[1]
+# get the label for the y axis
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--ylabel",default="XX")
+parser.add_argument("--input",default="STATIC_CORRELATOR.OUT")
+args = parser.parse_args() # get the arguments
+name = args.input # input file
+# define the ylabel
+bra = "$\\langle GS |"
+ket = "| GS \\rangle$"
+delta = "\\delta (\\omega - H +E_0)"
+if args.ylabel=="XX": ylabel = bra+"S^x_i"+delta+" S^x_j"+ket
+elif args.ylabel=="YY": ylabel = bra+"S^y_i"+delta+" S^y_j"+ket
+elif args.ylabel=="ZZ": ylabel = bra+"S^z_i"+delta+" S^z_j"+ket
+else: raise
+
+
+
+
+
+
+
+
 m = np.genfromtxt(name).transpose()
 
 plt.plot(m[0],m[1],c="blue",label="Real",linewidth=4)
 plt.plot(m[0],m[2],c="red",label="Imag",linewidth=4)
 plt.xlabel("Frequency [J]")
-plt.ylabel("$<S_i\delta (\omega - H -E_0) S_j>$")
+plt.ylabel(ylabel)
 plt.legend()
 plt.show()
 

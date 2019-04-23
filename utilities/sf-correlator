@@ -6,6 +6,29 @@ import matplotlib.pyplot as plt
 import matplotlib
 import sys
 
+
+
+
+# get the label for the y axis
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--ylabel",default="SS")
+parser.add_argument("--input",default="STATIC_CORRELATOR.OUT")
+args = parser.parse_args() # get the arguments
+name = args.input # input file
+# define the ylabel
+bra = "$\\langle GS |"
+ket = "| GS \\rangle$"
+if args.ylabel=="SS": ylabel = bra+"\\vec S_i \\cdot \\vec S_j"+ket
+elif args.ylabel=="XX": ylabel = bra+"S^x_i S^x_j"+ket
+elif args.ylabel=="YY": ylabel = bra+"S^y_i S^y_j"+ket
+elif args.ylabel=="ZZ": ylabel = bra+"S^z_i S^z_j"+ket
+else: raise
+
+
+
+
+
 matplotlib.rcParams.update({'font.size': 18})
 matplotlib.rcParams['font.family'] = "Bitstream Vera Serif"
 fig = plt.figure() # create figure
@@ -14,12 +37,11 @@ fig.set_facecolor("white")
 
 
 
-name = sys.argv[1]
 m = np.genfromtxt(name).transpose()
 
 plt.plot(m[0],m[1],marker="o",c="blue")
 plt.xlabel("Site")
-plt.ylabel("<S_i S_j>")
+plt.ylabel(ylabel)
 plt.show()
 
 
