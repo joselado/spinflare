@@ -9,6 +9,21 @@ from dmrgpy import spinchain
 app = qtwrap.App() # this is the main interface
 
 
+
+def get_mode():
+    """Decide if DMRG should be used according to the size of the matrix"""
+    if app.getbox("preferred_mode")=="DMRG": return "DMRG"
+    else: # try to use ED
+      spins = get_spins() # get the spins
+      out = 1 # initialize
+      for s in spins:
+          out *= s 
+          if out>1000: return "DMRG"
+    print("ED mode can be used")
+    return "ED"
+
+
+
 # set the logo
 def set_logo():
   logopath = os.path.dirname(os.path.realpath(__file__))+"/../logo/spinflare.png"
@@ -83,6 +98,8 @@ def initialize_spins():
     elif name=="3/2":  spins = [4 for i in range(ns)]
     elif name=="2":  spins = [5 for i in range(ns)]
     elif name=="5/2":  spins = [6 for i in range(ns)]
+    elif name=="1/2 & 1":  spins = [2+i%2 for i in range(ns)]
+    elif name=="1 & 3/2":  spins = [3+i%2 for i in range(ns)]
     else: raise
     spin2text(app,spins) # write spins in the table
     initialize_exchange() # initialize the exchange constants
@@ -211,7 +228,8 @@ def get_static_correlator():
     sc = getsc(app) # get the spin chain object
     pairs = get_pairs(app,sc.ns,"static_arrangement") # get the pairs
     cname = app.getbox("static_type") # actual operator for the correlator
-    out = sc.get_correlator(pairs,name=cname) # get the correlator
+    # get the correlator
+    out = sc.get_correlator(pairs,name=cname) 
     np.savetxt("STATIC_CORRELATOR.OUT",np.array([range(len(pairs)),out.real,out.imag]).T)
     set_data("STATIC_CORRELATOR.OUT")
     execute_script("sf-correlator --input STATIC_CORRELATOR.OUT   --ylabel "+cname)
@@ -288,7 +306,7 @@ def get_dynamical_correlator_map():
 
 def get_magnetization():
     sc = getsc(app) # get the spin chain object
-    mx,my,mz = sc.get_magnetization() # get the magnetization
+    mx,my,mz = sc.get_magnetization(mode=get_mode()) # get the magnetization
     inds = np.array(range(sc.ns))
     name = app.getbox("magnetization_type")
     if name=="X": mi = mx
@@ -321,7 +339,7 @@ def get_excited_states():
     """Get the ground state converge with bond dimension"""
     sc = getsc(app) # get the spin chain object
     n = int(app.get("num_excited"))
-    es = sc.get_excited(n=n) # get excited states
+    es = sc.get_excited(n=n,mode=get_mode()) # get excited states
     es = np.sort(es) # sort energies
     rmgs = app.getbox("substract_gs_excited")=="Yes"
     args = "" # arguments for the plotting

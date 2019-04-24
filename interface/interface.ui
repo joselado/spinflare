@@ -33,8 +33,12 @@
        <layout class="QGridLayout" name="gridLayout_9">
         <item row="0" column="0">
          <layout class="QGridLayout" name="gridLayout_2">
-          <item row="4" column="0">
-           <widget class="QTextEdit" name="spin_list"/>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_38">
+            <property name="text">
+             <string>Default spin site</string>
+            </property>
+           </widget>
           </item>
           <item row="0" column="0">
            <widget class="QLabel" name="label">
@@ -43,8 +47,21 @@
             </property>
            </widget>
           </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="nsites">
+            <property name="toolTip">
+             <string>Number of sites of the spin chain</string>
+            </property>
+            <property name="text">
+             <string>6</string>
+            </property>
+           </widget>
+          </item>
           <item row="2" column="1">
            <widget class="QComboBox" name="spin_combination">
+            <property name="toolTip">
+             <string>Select the default kind of spin chain that will be created</string>
+            </property>
             <item>
              <property name="text">
               <string>1/2</string>
@@ -57,7 +74,17 @@
             </item>
             <item>
              <property name="text">
+              <string>1/2 &amp; 1</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
               <string>3/2</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>1 &amp; 3/2</string>
              </property>
             </item>
             <item>
@@ -72,22 +99,21 @@
             </item>
            </widget>
           </item>
-          <item row="0" column="1">
-           <widget class="QLineEdit" name="nsites">
-            <property name="text">
-             <string>6</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="0">
+          <item row="4" column="0" colspan="2">
            <widget class="QLabel" name="label_5">
             <property name="text">
              <string>Table with the spins</string>
             </property>
            </widget>
           </item>
-          <item row="2" column="0">
+          <item row="5" column="0" colspan="2">
+           <widget class="QTextEdit" name="spin_list"/>
+          </item>
+          <item row="3" column="0" colspan="2">
            <widget class="QPushButton" name="initialize_spins">
+            <property name="toolTip">
+             <string>Initialize all the spins and all the terms in the Hamiltonian</string>
+            </property>
             <property name="text">
              <string>Full spin initialization</string>
             </property>
@@ -109,7 +135,7 @@
           </property>
           <widget class="QWidget" name="tab">
            <attribute name="title">
-            <string>Exchange</string>
+            <string>Exchange table</string>
            </attribute>
            <layout class="QGridLayout" name="gridLayout_20">
             <item row="0" column="0">
@@ -150,7 +176,7 @@
           </widget>
           <widget class="QWidget" name="tab_14">
            <attribute name="title">
-            <string>Generators</string>
+            <string>Generator</string>
            </attribute>
            <layout class="QGridLayout" name="gridLayout_23">
             <item row="0" column="0">
@@ -422,17 +448,17 @@
              <string>Bond dimension, this controls the accuracy of the MPS antsaz. Increase it for more accurate results</string>
             </property>
             <property name="text">
-             <string>10</string>
+             <string>15</string>
             </property>
            </widget>
           </item>
           <item row="1" column="1">
            <widget class="QLineEdit" name="nsweeps">
             <property name="toolTip">
-             <string>Number of sweeps of the DMRG algorithm</string>
+             <string>Number of sweeps of the DMRG algorithm, increase for higher accuracy</string>
             </property>
             <property name="text">
-             <string>4</string>
+             <string>6</string>
             </property>
            </widget>
           </item>
@@ -459,6 +485,9 @@
           </item>
           <item row="2" column="1">
            <widget class="QComboBox" name="parallelization">
+            <property name="toolTip">
+             <string>Parallelize the calculation of certain parts, using all the available cores</string>
+            </property>
             <item>
              <property name="text">
               <string>No</string>
@@ -467,6 +496,30 @@
             <item>
              <property name="text">
               <string>Yes</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="label_37">
+            <property name="text">
+             <string>Preferred mode</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QComboBox" name="preferred_mode">
+            <property name="toolTip">
+             <string>Select whether if the program should try to use the ED mode if possible (so far only implemented for excited states and magnetization)</string>
+            </property>
+            <item>
+             <property name="text">
+              <string>DMRG</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>ED</string>
              </property>
             </item>
            </widget>
