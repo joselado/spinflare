@@ -1,6 +1,7 @@
 # SpinFlare
 
 ## User interface to compute many body spin systems
+![Alt text](images/interface.png?raw=true "Main window of SpinFlare")
 
 ## Capabilities
 Local magnetization
