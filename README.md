@@ -5,8 +5,12 @@
 
 ## Capabilities
 Local magnetization
-Static correlators
-Dynamical correlators
+
+Static correlation functions
+
+Dynamical correlator function
+
+Excited states
 
 ## How to install
 Execute the script "install.sh", afterwards you just have to write in the
