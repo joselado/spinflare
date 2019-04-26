@@ -128,7 +128,7 @@
         <string>Exchange</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_4">
-        <item row="0" column="0">
+        <item row="1" column="0">
          <widget class="QTabWidget" name="tabWidget_5">
           <property name="currentIndex">
            <number>0</number>
@@ -260,6 +260,13 @@
           </widget>
          </widget>
         </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="exchange_image">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
        </layout>
       </widget>
       <widget class="QWidget" name="tab_9">
@@ -267,7 +274,7 @@
         <string>Fields</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_25">
-        <item row="0" column="0">
+        <item row="1" column="0">
          <widget class="QTabWidget" name="tabWidget_3">
           <property name="currentIndex">
            <number>0</number>
@@ -431,6 +438,13 @@
            </layout>
            <zorder></zorder>
           </widget>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="field_image">
+          <property name="text">
+           <string/>
+          </property>
          </widget>
         </item>
        </layout>

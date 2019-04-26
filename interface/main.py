@@ -26,8 +26,11 @@ def get_mode():
 
 # set the logo
 def set_logo():
-  logopath = os.path.dirname(os.path.realpath(__file__))+"/../logo/spinflare.png"
+  path = os.path.dirname(os.path.realpath(__file__))+"/../"
+  logopath = path+"/logo/spinflare.png"
   app.set_image("spinflare_logo",logopath)
+  app.set_image("exchange_image",path+"/logo/exchange_image.png")
+  app.set_image("field_image",path+"/logo/field_image.png")
 
 set_logo()
 
