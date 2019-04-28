@@ -10,6 +10,19 @@ app = qtwrap.App() # this is the main interface
 
 
 
+def get_dimension(spins):
+    """
+    Return the dimension of the Hilbert space of the spin chain,
+    return None if the dimension is bigger than 10000
+    """
+    out = 1
+    for s in spins: 
+        out *= s
+        if out>10000: return None
+    return out
+
+
+
 def get_mode():
     """Decide if DMRG should be used according to the size of the matrix"""
     if app.getbox("preferred_mode")=="DMRG": return "DMRG"
@@ -344,6 +357,9 @@ def get_excited_states():
     n = int(app.get("num_excited"))
     es = sc.get_excited(n=n,mode=get_mode()) # get excited states
     es = np.sort(es) # sort energies
+    ndim = get_dimension(get_spins()) # dimension of the system
+    if ndim is not None: # if not too big dimension
+        if ndim<=n: es = es[0:ndim] # take only this energies
     rmgs = app.getbox("substract_gs_excited")=="Yes"
     args = "" # arguments for the plotting
     if rmgs: 
