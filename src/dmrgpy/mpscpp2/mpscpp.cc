@@ -1,4 +1,5 @@
 #include "itensor/all.h"
+#include "extra/all.h"
 #include <iostream>
 #include <fstream>
 #include <iomanip>
@@ -16,6 +17,7 @@ using namespace std;
 #include"bandwidth.h"  // return the bandwidth of the hamiltonian
 #include"get_gap.h" // compute the gap
 #include"get_sites.h" // get the sites from a file
+#include"get_ampo_operator.h" // get an arbitrary AMPO operator
 #include"operators.h" // read the different tasks
 #include"get_hamiltonian.h" // get the hoppings (in case there are)
 #include"read_wf.h" // this does not work yet
@@ -74,6 +76,7 @@ main()
     if (check_task("time_evolution"))  quench(sites) ; // time evolution
     if (check_task("density_matrix"))  reduced_dm() ; // DM
     if (check_task("vev"))  vev() ; // Vacuum expectation value
+    if (check_task("excited_vev"))  excited_vev() ; // VEV excited
     if (check_task("dynamical_correlator_excited"))  
 	    dynamical_correlator_excited(); // DM
     system("rm -f ERROR") ; // remove error file

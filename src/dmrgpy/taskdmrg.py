@@ -43,6 +43,8 @@ def write_tasks(self):
   fo = open("tasks.in","w")
   fo.write("tasks\n{\n")
   #
+  if self.use_ampo_hamiltonian: 
+      fo.write(" use_ampo_hamiltonian = true\n")
   if self.gs_from_file and self.starting_file_gs is not None: 
       fo.write(" gs_from_file = true\n")
       fo.write(" starting_file_gs = "+self.starting_file_gs+"\n") # starting WF
@@ -55,6 +57,12 @@ def write_tasks(self):
   fo.write(" maxm = "+str(self.maxm)+"\n") # maximum bond dimension
   fo.write(" cutoff = "+str(self.cutoff)+"\n") # maximum discarded weight
   fo.write(" nsweeps = "+str(self.nsweeps)+"\n") # maximum discarded weight
+  ### this is a special addition to allow for generic interactions ###
+  if self.hamiltonian_multioperator is not None: # if there is a multioperator
+      dmh = self.hamiltonian_multioperator.get_dict() # get dictionary
+      fo.write("use_multioperator_hamiltonian = true\n") # set it to true
+      for key in dmh:
+        fo.write(key+" = "+obj2str(dmh[key])+"\n") # write that term
   fo.write("}\n")
   fo.close()
 
@@ -65,6 +73,7 @@ def obj2str(a):
     Convert into a string
     """
     if a is None: return "None"
+    elif type(a)==int: return str(a)
     elif type(a)==bool:
         if a: return "true"
         else: return "false"

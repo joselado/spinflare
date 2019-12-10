@@ -1,16 +1,22 @@
 import numpy as np
 from . import funtk
+from . import ampotk
 
 
 def write_hamiltonian(self):
     write_sites(self) # write the different sites
-    write_exchange(self)  # write the exchange
-    write_hoppings(self)  # write the hoppings
-    write_spinful_hoppings(self)  # write the hoppings
-    write_pairing(self)  # write the pairing
-    write_hubbard(self)  # write hubbard terms
-    write_vijkl(self)  # write vijkl terms
-    write_fields(self) # write the fields
+    if self.use_ampo_hamiltonian: # use Hamiltonian as an MPO
+        if self.hamiltonian is not None: # Hamiltonian object created 
+            self.execute(lambda: self.hamiltonian.write("hamiltonian.in"))
+        else: ampotk.write_all(self)
+    else: # conventional way
+      write_exchange(self)  # write the exchange
+      write_hoppings(self)  # write the hoppings
+      write_spinful_hoppings(self)  # write the hoppings
+      write_pairing(self)  # write the pairing
+      write_hubbard(self)  # write hubbard terms
+      write_vijkl(self)  # write vijkl terms
+      write_fields(self) # write the fields
 
 
 def write_hubbard(self):

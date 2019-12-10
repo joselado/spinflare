@@ -8,6 +8,7 @@ import scipy.sparse.linalg as lg
 import scipy.sparse.linalg as slg
 from ..algebra import algebra
 from ..algebra import kpm
+from ..edtk import dynamics
 
 # calculate dynamical correlators
 
@@ -32,26 +33,25 @@ def spismj(sc,h0,es=None,i=0,j=0,delta=0.1):
 def dynamical_correlator(sc,h0,es=None,i=0,j=0,
         delta=0.1,namei="X",namej="X",mode="full"):
   """Calculate a correlation function SiSj in a frequency window"""
-  e0,wf0 = spectrum.ground_state(h0) # get the ground state
   if es is None:
     es = np.linspace(-1.0,7.0,int(40/delta))
-  if namei=="X": sm = sc.sxi[i]
-  elif namei=="Y": sm = sc.syi[i]
-  elif namei=="Z": sm = sc.szi[i]
-  else: raise
-  if namej=="X": sp = sc.sxi[j]
-  elif namej=="Y": sp = sc.syi[j]
-  elif namej=="Z": sp = sc.szi[j]
-  else: raise
-  if mode=="full" and h0.shape[0]>100: mode = "cv"
+  sm = sc.get_operator(namei,i) # get the operator
+  sp = sc.get_operator(namej,j) # get the operator
+  if mode=="full" and h0.shape[0]>1000: mode = "cv"
+  if mode=="full":
+      return dynamics.dynamical_correlator(h0,sm,sp,delta=delta,es=es)
+  ## default method
+  e0,wf0 = algebra.ground_state(h0) # get the ground state
   iden = identity(h0.shape[0],dtype=np.complex) # identity
   if mode=="full": iden = iden.todense() # dense matrix
   out = []
   for e in es: # loop over energies
       if mode=="full": # using exact inversion
-        g = ((iden*(e+e0+1j*delta)-h0).I - (iden*(e+e0-1j*delta)-h0).I)/2.
-        op = sp*g*sm # operator
-        o = viAvj(wf0,op,wf0) # correlator
+        g1 = algebra.inv(iden*(e+e0+1j*delta)-h0)
+        g2 = algebra.inv(iden*(e+e0-1j*delta)-h0)
+        g = (g1-g2)/2.
+        op = sp@g@sm # operator
+        o = algebra.braket_wAw(wf0,op) # correlator
       elif mode=="cv": # correction vector algorithm
           o1 = solve_cv(h0,wf0,sp,sm,e+e0,delta=delta) # conjugate gradient
           o2 = solve_cv(h0,wf0,sp,sm,e+e0,delta=-delta) # conjugate gradient
@@ -111,14 +111,8 @@ def dynamical_correlator_kpm(sc,h0,es=np.linspace(-1.0,4.0,300),i=0,j=0,
   emax,wfmax = slg.eigsh(h0,k=1,ncv=20,which="LA")
   e0,wf0 = -e0[0],np.transpose(wf0)[0]
   emax = emax[0]
-  if namei=="X": sm = sc.sxi[i]
-  elif namei=="Y": sm = sc.syi[i]
-  elif namei=="Z": sm = sc.szi[i]
-  else: raise
-  if namej=="X": sp = sc.sxi[j]
-  elif namej=="Y": sp = sc.syi[j]
-  elif namej=="Z": sp = sc.szi[j]
-  else: raise
+  sm = sc.get_operator(namei,i)
+  sp = sc.get_operator(namej,j)
   vi = sm*csc(wf0).transpose() 
   vj = sp*csc(wf0).transpose() 
   h = -identity(h0.shape[0])*e0+h0
@@ -138,13 +132,14 @@ def dynamical_correlator_kpm(sc,h0,es=np.linspace(-1.0,4.0,300),i=0,j=0,
 
 
 
-def static(sc,h,namei="X",namej="X",i=0,j=0):
+def static(sc,h,namei="X",namej="X",i=0,j=0,apply_hamiltonian=False):
     """Return a certain correlator"""
     wf = spectrum.ground_state(h)[1] # get wavefunction
     def getop(name,i):
-        if name=="X": return sc.sxi[i]
-        elif name=="Y": return sc.syi[i]
-        elif name=="Z": return sc.szi[i]
+        if name=="X" or name=="Sx": return sc.sxi[i]
+        elif name=="Y" or name=="Sy": return sc.syi[i]
+        elif name=="Z"or name=="Sz": return sc.szi[i]
         else: raise
-    m = getop(namei,i)*getop(namej,j) # get operator
+    if apply_hamiltonian: m = getop(namei,i)@h@getop(namej,j) # get operator
+    else: m = getop(namei,i)@getop(namej,j) # get operator
     return algebra.braket_wAw(wf,m,wf)

@@ -74,7 +74,11 @@ class MBFermion():
         Add a single particle term to the Hamiltonian
         """
         self.h = self.h + self.one2many(m) # add contribution
-
+    def add_multioperator(self,m):
+        """
+        Add a multioperator Hamiltonian
+        """
+        self.h = self.h + self.get_operator(m) # add the operator
     def get_hopping(self,m):
         """
         Return Hopping matrix
@@ -104,6 +108,9 @@ class MBFermion():
         self.energy = e # store energy
         self.wf0 = wf # store wavefunction
         return self.energy
+    def get_excited(self,**kwargs):
+        """Excited states"""
+        return algebra.lowest_eigenvalues(MBF.h,**kwargs)
     def get_cd(self,i):
         """
         Return the creation operator for site i in the many body basis
@@ -163,16 +170,35 @@ class MBFermion():
             A = A@self.get_operator(namej,p[1]) # get matrix
             out.append(algebra.braket_wAw(self.wf0,A))
         return np.array(out) # return array
+    def vev(self,A):
+        """Return the ground state expectation value"""
+        m = self.get_operator(A) # return the operator
+        self.get_gs() # get ground state
+        return algebra.braket_wAw(self.wf0,m) # return the overlap
+    def excited_vev(self,A,**kwargs):
+        m = self.get_operator(A) # return the operator
+        wfs = algebra.lowest_eigenvectors(self.h,**kwargs)
+        return np.array([algebra.braket_wAw(wf,m) for wf in wfs])
     def get_operator(self,name,i=0):
         """
         Return a certain operator
         """
+        if name is None: return self.get_zero() # return zero operator
+        from .. import multioperator
         if type(name)==multioperator.MultiOperator:
-            m = self.get_identity()
-            for o in name.op: # loop over operators
-                m = m@self.get_operator(o[0],int(o[1]))
-            return m # return operator
-        if name=="density": return self.get_density(i)
+            return multioperator.MO2matrix(name,self) # return operator
+
+#        elif type(name)==multioperator.MultiOperator: # Multioperator
+#            out = self.get_identity()*0. # initialize
+#            for o in name.op: # loop over operators
+#                m = self.get_identity()
+#                m = m*o[0] # get coefficient
+#                for j in range(1,len(o)):
+#                  m = m@self.get_operator(o[j][0],int(o[j][1]))
+#                out = out + m
+#            return out # return operator
+        ### conventional procedure ###
+        elif name=="density" or name=="N": return self.get_density(i)
         elif name=="C": return self.get_c(i)
         elif name=="Cdag": return self.get_cd(i)
         else: raise

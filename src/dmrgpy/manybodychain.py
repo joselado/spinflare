@@ -43,7 +43,9 @@ class Many_Body_Hamiltonian():
       self.spinful_hoppings = dict() # empty dictionary
       self.pairing = None # pairing
       self.hubbard = dict() # empty dictionary
+      self.hamiltonian = None # Hamiltonian, as a multioperator
       self.hubbard_matrix = np.zeros((self.ns,self.ns)) # empty matrix
+      self.use_ampo_hamiltonian = False # use ampo Hamiltonian
   #    self.exchange.append(Coupling(0,self.ns-1,one)) # closed boundary
       # additional arguments
       self.kpmmaxm = 50 # bond dimension in KPM
@@ -58,6 +60,7 @@ class Many_Body_Hamiltonian():
       self.kpm_n_scale = 3 # scaling factor for the number of polynomials
       self.restart = False # restart the calculation
       self.gs_from_file = False # start from a random wavefunction
+      self.excited_from_file = False # read excited states
       self.e0 = None # no ground state energy
       self.wf0 = None # no initial WF
       self.starting_file_gs = None # initial file for GS
@@ -65,6 +68,8 @@ class Many_Body_Hamiltonian():
       self.computed_gs = False # computed the GS already
       self.vijkl = None # generalized interaction
       self.fit_td = False # use fitting procedure in time evolution
+      self.itensor_version = 2 # ITensor version
+      self.hamiltonian_multioperator = None # Multioperator for the Hamiltonian
       os.system("mkdir -p "+self.path) # create folder for the calculations
   def to_folder(self):
       """Go to a certain folder"""
@@ -85,6 +90,9 @@ class Many_Body_Hamiltonian():
       print("New path",out.path)
       os.system("cp -r "+self.path+"  "+out.path) # copy to the new path
       return out # return new object
+  def set_hamiltonian(self,MO): 
+      """Set the Hamiltonian"""
+      self.hamiltonian = MO
   def to_origin(self): 
     if os.path.isfile(self.path+"/ERROR"): raise # something wrong
     os.chdir(self.inipath) # go to original folder
@@ -92,68 +100,44 @@ class Many_Body_Hamiltonian():
       """
       Remove the temporal folder
       """
+      self.hamiltonian = None
       os.system("rm -rf "+self.path) # clean temporal folder
   def vev_MB(self,MO,**kwargs):
       """
       Compute a vacuum expectation value
       """
       return vev.vev(self,MO,**kwargs)
-  def vev(self,MO,**kwargs):
+  def vev(self,MO,**kwargs): return self.vev_MB(MO,**kwargs)
+  def excited_vev_MB(self,MO,**kwargs):
       """
       Compute a vacuum expectation value
       """
-      return vev.vev(self,MO,**kwargs)
+      return vev.excited_vev(self,MO,**kwargs)
+  def excited_vev(self,MO,**kwargs): return self.excited_vev_MB(MO,**kwargs)
+#  def vev(self,MO,**kwargs):
+#      """
+#      Compute a vacuum expectation value
+#      """
+#      return vev.vev(self,MO,**kwargs)
   def set_vijkl(self,f):
       """
       Create the generalized interaction
       """
       self.vijkl = f # store
-  def set_exchange(self,fun):
-    """Set the exchange coupling between sites"""
-    self.computed_gs = False # say that GS has not been computed
-    self.exchange = [] # empty list
-    for i in range(self.ns): # loop
-      for j in range(self.ns):  # loop
-        g = fun(i,j).real # call the function
-        if np.sum(np.abs(fun(i,j)-fun(j,i)))>1e-5: raise # something wrong
-        g = g*one # multiply by the identity
-        if np.sum(np.abs(g))!=0.0: 
-          g = g/2. # normalize
-          c = Coupling(i,j,g) # create class
-          self.exchange.append(c) # store
-    # now the onsite ones
-#    for i in range(self.ns): # loop
-#        g = fun(i,i).real # call the function
-#        g = g*one # multiply by the identity
-#        g = (g + g.H)/2. # the onsite one must be hermitian
-#        if np.sum(np.abs(g))!=0.0: # if nonzero 
-#          c = Coupling(i,i,g) # create class
-#          self.exchange.append(c) # store
-  def set_hoppings(self,fun):
-      """Add the spin independent hoppings"""
-      self.computed_gs = False # say that GS has not been computed
-      self.hoppings = dict()
-      if callable(fun):
-        for i in range(self.ns): # loop
-            for j in range(self.ns): # loop
-                if self.sites[i] in [0,1] and self.sites[j] in [0,1]:
-                    c = fun(i,j)
-                    if np.abs(c)>0.0:
-                        self.hoppings[(i,j)] = Coupling(i,j,c) # store
-      else: raise # Error
   def set_spinful_hoppings(self,fun):
       """Add the spin independent hoppings"""
-      self.computed_gs = False # say that GS has not been computed
-      if callable(fun):
-        self.spinful_hoppings = dict()
-        for i in range(self.ns): # loop
-            for j in range(self.ns): # loop
-                if self.sites[i]==1 and self.sites[j]==1:
-                    c = fun(i,j)
-                    if np.abs(c)>0.0:
-                        self.spinful_hoppings[(i,j)] = Coupling(i,j,c) # store
-      else: # assume it is a matrix
-          self.spinful_hoppings = np.matrix(fun)
+      raise # no longer used
+#      self.computed_gs = False # say that GS has not been computed
+#      if callable(fun):
+#        self.spinful_hoppings = dict()
+#        for i in range(self.ns): # loop
+#            for j in range(self.ns): # loop
+#                if self.sites[i]==1 and self.sites[j]==1:
+#                    c = fun(i,j)
+#                    if np.abs(c)>0.0:
+#                        self.spinful_hoppings[(i,j)] = Coupling(i,j,c) # store
+#      else: # assume it is a matrix
+#          self.spinful_hoppings = np.matrix(fun)
   def set_pairings_MB(self,fun):
       """Add the up/down pairing"""
       self.computed_gs = False # say that GS has not been computed
@@ -205,8 +189,12 @@ class Many_Body_Hamiltonian():
       """
       Run the DMRG calculation
       """
-      # run the DMRG calculation
-      self.execute(lambda : os.system(dmrgpath+"/mpscpp/mpscpp.x > status.txt"))
+      # executable
+      if self.itensor_version==2: mpscpp = dmrgpath+"/mpscpp2/mpscpp.x" 
+      elif self.itensor_version==3: mpscpp = dmrgpath+"/mpscpp3/mpscpp.x" 
+      else: raise
+      if not os.path.isfile(mpscpp): raise
+      self.execute(lambda : os.system(mpscpp+" > status.txt"))
   def entropy(self,n=1):
     """Return the entanglement entropy"""
 #    self.setup_sweep()
@@ -238,6 +226,13 @@ class Many_Body_Hamiltonian():
     """Return the gap"""
     es = self.get_excited(2)
     return es[1] -es[0]
+  def get_hamiltonian(): return self.hamiltonian
+  def gs_energy_fluctuation(self,**kwargs):
+      """Compute the energy fluctuations"""
+      h = self.get_hamiltonian()
+      e = self.vev(h)
+      e2 = self.vev(h*h)
+      return np.sqrt(np.abs(e2-e**2))
   def set_initial_wf(self,wf):
       """Use a certain wavefunction as initial guess"""
       if wf is None:
@@ -288,6 +283,10 @@ class Many_Body_Hamiltonian():
       Return an estimate of the bandwidth
       """
       return 3*self.ns # estimated bandwidth
+  def get_operator(self,name,i=None):
+      """Return a certain multioperator"""
+      from . import multioperator
+      return multioperator.obj2MO([[name,i]]) # return operator
 
 
 
