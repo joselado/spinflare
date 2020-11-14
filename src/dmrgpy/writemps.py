@@ -1,15 +1,17 @@
 import numpy as np
 from . import funtk
 from . import ampotk
-
+from . import multioperator
 
 def write_hamiltonian(self):
-    write_sites(self) # write the different sites
+    self.execute(lambda: write_sites(self)) # write the different sites
     if self.use_ampo_hamiltonian: # use Hamiltonian as an MPO
         if self.hamiltonian is not None: # Hamiltonian object created 
-            self.execute(lambda: self.hamiltonian.write("hamiltonian.in"))
+            h = self.hamiltonian
+            self.execute(lambda: h.write("hamiltonian.in"))
         else: ampotk.write_all(self)
     else: # conventional way
+      raise # no longer used
       write_exchange(self)  # write the exchange
       write_hoppings(self)  # write the hoppings
       write_spinful_hoppings(self)  # write the hoppings
@@ -131,7 +133,9 @@ def write_sites(self):
   for si in self.sites:
     if si<7: fo.write(str(si)+"\n")
     elif si==1: print("Warning, some sites are not spin operators")
-    else: raise
+    else: 
+        print("Not with DMRG yet")
+   #     raise
   fo.close()
 
 

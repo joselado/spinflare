@@ -1,4 +1,5 @@
-
+import numbers
+import types
 import collections
 import numpy as np
 
@@ -6,9 +7,13 @@ import numpy as np
 # A_0@A_1@....
 # for mpscpp.x
 
+def isnumber(x):
+#    print(type(x),isinstance(x, numbers.Number))
+    return isinstance(x, numbers.Number) or np.iscomplex(x)
+
 
 ampo_counter = 0
-
+use_jordan_wigner = True
 
 
 class MultiOperator():
@@ -31,25 +36,51 @@ class MultiOperator():
         """Add a new term"""
         self.i += 1 # increase the counter
         self.op.append([c]) # initialize
+    def simplify(self):
+        from .multioperatortk import sympymultioperator
+        return sympymultioperator.simplifyMO(self)
+    def get_bandwidth(self,MBO):
+        """Get the bandwidth"""
+        return MBO.bandwidth(self)
+    def is_hermitian(self):
+        """Check if an operator is hermitian"""
+        dh = self - self.get_dagger() ; dh = dh.simplify()
+        return dh==0
+    def is_antihermitian(self):
+        """Check if an operator is antiHermitian"""
+        dh = self + self.get_dagger() ; dh = dh.simplify()
+        return dh==0
     def copy(self):
         from copy import deepcopy
         return deepcopy(self) # return a copy
+    def get_dagger(self):
+        return get_dagger(self)
+    def __neg__(self):
+        return (-1)*self
+    def __sub__(self,a):
+        return self + (-1)*a
+    def __rsub__(self,a):
+        return -self + a
     def __add__(self,a):
         """Sum operation"""
         if a is None: return self.copy() # return the Hamiltonian
-        if not type(a)==MultiOperator: # assume that it is a number
-            if np.abs(a)==0.0: return self.copy() # return object
-            else: raise
-        else: # multioperator
+        elif isnumber(a): # if it is a number
+            return self+a*identity() # return identity
+        elif type(a)==MultiOperator: # if it is a multioperator
           out = self.copy() # create a copy
           out.op = self.op + a.op # sum the two operators
           out.i = self.i + a.i + 1 # increase the index
           out.clean()
           return out # return the sum
+        else: raise
     def __radd__(self,a): return self.__add__(a)
     def __rmul__(self,a):
         """Multiply by a number"""
         return self.__mul__(a)
+    def __truediv__(self,a):
+        if isnumber(a): # number
+          return (1./a)*self
+        else: raise
     def multiply_scalar(self,a):
         out = self.copy()
         for i in range(len(out.op)):
@@ -58,7 +89,9 @@ class MultiOperator():
     def __mul__(self,a):
         """Compute the product between two multioperators"""
         if type(a)==MultiOperator: return self.multiply_MO(a)
-        else: return self.multiply_scalar(a)
+        elif type(a)==np.ndarray: raise  # prevent using rmul in array
+        elif isnumber(a): return self.multiply_scalar(a)
+        else: return NotImplemented
     def multiply_MO(self,a):
         out = self.copy() # copy operator
         out.i = (self.i+1)*(a.i+1) # total number of terms
@@ -81,7 +114,9 @@ class MultiOperator():
     def write(self,name=None):
         """Write in a file"""
         if name is None: name = self.name+".in"
-        write(self,name)
+        if use_jordan_wigner: m = jordan_wigner(self)
+        else: m = self
+        write(m,name)
     def get_dict(self):
         """Return the dictionary to be used in tasks.in"""
         d = dict()
@@ -106,6 +141,11 @@ def zero():
     return MultiOperator(term=True,c=0.0)
 
 
+def identity():
+    op = MultiOperator(term=True,c=1.0)
+    op.add_operator("Id",1)
+    return op
+
 def MO2list(self):
     """Conver a multioperator into a list"""
     out = []
@@ -123,8 +163,20 @@ def MO2list(self):
 
 def write(MO,name):
     """Write a multioperator in a file"""
-    from .ampotk import write_ampo
     write_ampo(MO2list(MO),name) # write in a file
+
+
+def write_ampo(out,name):
+    f = open(name,"w")
+    f.write(str(len(out))+"\n") # number of lines
+    for o in out:
+      n = (len(o)-2)//2 # number of terms
+      if n>=200: raise # C++ code needs to be recompiled
+      f.write(str((len(o)-2)//2)+"\n") # number of terms
+      for io in o:
+          f.write(str(io)+"  ")
+      f.write("\n")
+    f.close()
 
 
 
@@ -184,6 +236,70 @@ def MO2matrix(MO,obj):
             otmp = otmp@obj.get_operator(term[0],term[1]) # multiply
         out = out + otmp
     return out # return matrix
+
+
+def jordan_wigner(MO):
+    """Use Jordan Wigner transformationin a multioperator"""
+    from .multioperatortk import jordanwigner
+    m = 0 # initialize output
+    for ii in range(len(MO.op)): # loop over operators
+        opi = MO.op[ii] # take this term
+        n = len(opi)-1 # number of terms in the product
+        c = opi[0] # take the complex value
+        mi = list2MO(opi) # default output
+        ls = [opi[kk+1][0] for kk in range(n)] # names of operators
+        try:
+          if (n==1): # one point operator
+              i = opi[1][1]
+              if "C" in ls or "Cdag" in ls:
+                  mi = c*jordanwigner.one_fermion(ls[0],i)
+          elif (n==2): # two point operators
+              i,j = opi[1][1],opi[2][1]
+              if "C" in ls or "Cdag" in ls:
+                  mi = c*jordanwigner.two_fermions(ls[0],i,ls[1],j)
+          elif (n==4): # four point operators
+              i,j,k,l = opi[1][1],opi[2][1],opi[3][1],opi[4][1]
+              if "C" in ls or "Cdag" in ls:
+                  mi = c*jordanwigner.four_fermions(ls[0],i,ls[1],j,ls[2],
+                          k,ls[3],l) 
+          else: 
+              if "C" in ls or "Cdag" in ls: raise # not implemented
+        except: # brute force 
+            inds = [opi[kk+1][1] for kk in range(n)]
+            mi = c*jordanwigner.product2jw(ls,inds)
+        m = m + mi
+    return m
+
+
+
+def get_dagger(self,conjugate=True):
+    """Return the dagger of a multioperator"""
+    m = 0 # initialize
+    for opi in self.op: # loop over terms
+        n = len(opi) # number of terms in the product
+        c = opi[0] # coefficient
+        mi = np.conjugate(c) # initialize
+        for i in range(1,n): # loop over terms in the product
+            name = opi[i][0] # name
+            jj = opi[i][1] # index
+            if name=="C": name2="Cdag"
+            elif name=="Cdag": name2="C"
+            elif name=="A": name2="Adag"
+            elif name=="Adag": name2="A"
+            elif name=="Sp": name2="Sm"
+            elif name=="S+": name2="S-"
+            elif name=="Sm": name2="Sp"
+            elif name=="S-": name2="S+"
+            elif name=="Sig": name2="SigDag"
+            elif name=="Tau": name2="TauDag"
+            elif name=="SigDag": name2="Sig"
+            elif name=="TauDag": name2="Tau"
+            else: name2 = name
+            mi = obj2MO([[name2,jj]])*mi
+        m = m + mi # add contribution
+    return m # return MO
+
+
 
 
 

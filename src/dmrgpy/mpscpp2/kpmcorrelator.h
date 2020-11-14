@@ -33,7 +33,7 @@ static auto moments_vi_vj_shift=[](auto m, auto vi, auto vj, int n, auto shift) 
 
 // compute the Chebyshev polynomials for a certain S+S- correlation
 static auto get_moments_spismj_brute=[](auto sites, auto H, int n, int i, int j) {
-  auto psi = get_gs(sites,H) ; // get the ground state
+  auto psi = get_gs() ; // get the ground state
   auto m = scale_hamiltonian(sites,H) ; // scale this Hamiltonian
   auto ampo1 = AutoMPO(sites); 
   auto ampo2 = AutoMPO(sites); 
@@ -50,10 +50,21 @@ static auto get_moments_spismj_brute=[](auto sites, auto H, int n, int i, int j)
 
 
 
-
-
-static auto get_moments_dynamical_correlator=[](auto sites, auto H)
+static auto general_kpm=[]()
 {
+  auto sites = get_sites(); // Get the different sites
+  auto wfa = read_wf("wfa.mps") ; // first wavefunction
+  auto wfb = read_wf("wfb.mps") ; // first wavefunction
+  auto m = get_mpo_operator("kpm_operator.in") ;
+  auto num_pol = get_int_value("kpm_num_polynomials");
+  moments_vi_vj(m,wfa,wfb,num_pol) ; //compute the KPM moments
+};
+
+
+static auto get_moments_dynamical_correlator=[]()
+{
+  auto sites = get_sites(); // Get the different sites
+  auto H = get_hamiltonian(sites) ; // get the Hamiltonian
   auto n = get_int_value("nkpm");
   auto delta = get_float_value("kpm_delta");
   // define on the fly the number of polynomials
@@ -62,7 +73,7 @@ static auto get_moments_dynamical_correlator=[](auto sites, auto H)
   myfile.open("KPM_NUM_POLYNOMIALS.OUT");
   myfile << std::setprecision(8) << n << endl;
   myfile.close(); // close file
-  auto psi = get_gs(sites,H) ; // get the ground state
+  auto psi = get_gs() ; // get the ground state
   auto m = scale_hamiltonian(sites,H) ; // scale this Hamiltonian
   auto m1 = Iden(sites) ; // identity
   auto m2 = Iden(sites) ; // identity
@@ -107,7 +118,7 @@ static auto get_moments_dynamical_correlator=[](auto sites, auto H)
 // compute the Chebyshev polynomials for a certain S+S- correlation
 // using a smart energy window
 static auto get_moments_spismj=[](auto sites, auto H, int n, int i, int j) {
-  auto psi = get_gs(sites,H) ; // get the ground state
+  auto psi = get_gs() ; // get the ground state
   float scale = get_float_value("kpm_scale") ; // energy scale
   auto e0 = overlap(psi,H,psi) ; // ground state energy
   auto shift = - e0 - scale/4 ; // shift to the Hamiltonian

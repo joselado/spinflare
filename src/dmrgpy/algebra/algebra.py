@@ -5,7 +5,7 @@ import scipy.sparse.linalg as slg
 import numpy as np
 
 
-maxsize = 4000
+maxsize = 3000
 
 
 
@@ -108,9 +108,10 @@ def ground_state(h,nmax=maxsize):
   if h.shape[0]>nmax:
     if info: print("Calling ARPACK")
     eig,eigvec = slg.eigsh(h,k=10,which="SA",maxiter=100000)
+    eig = np.sort(eig)
   else:
     if info: print("Full diagonalization")
-    eig,eigvec = dlg.eigh(h.todense())
+    eig,eigvec = dlg.eigh(todense(h))
   return eig[0],eigvec.transpose()[0]
 
 
@@ -128,11 +129,39 @@ def lowest_eigenvalues(h,n=10,nmax=maxsize):
   if h.shape[0]>nmax:
     if info: print("Calling ARPACK")
     eig,eigvec = slg.eigsh(h,k=n,which="SA",maxiter=100000)
+    eig = np.sort(eig)
   else:
     if info: print("Full diagonalization")
+    ishermitian(h)
     eig = dlg.eigvalsh(h.todense())
   return eig[0:n] # return eigenvalues
 
+
+def lowest_states(h,n=10,nmax=maxsize):
+  """Get a ground state"""
+  info = False
+  if h.shape[0]>nmax:
+    if info: print("Calling ARPACK")
+    eig,eigvec = slg.eigsh(h,k=n,which="SA",maxiter=100000)
+    eigvec = [v for (e,v) in sorted(eig.eigvec.T)]
+    eig = np.sort(eig)
+    return (eig,eigvec)
+  else:
+    if info: print("Full diagonalization")
+    ishermitian(h)
+    eig,vs = dlg.eigh(h.todense())
+  return eig[0:n],vs.T[0:n] 
+
+
+
+
+
+
+def ishermitian(m):
+    d = m - np.conjugate(m.T)
+    if np.max(np.abs(d))>1e-6: 
+        print("Hamiltonian is not Hermitian")
+        raise
 
 def expm(m):
     m = todense(m)
@@ -152,10 +181,11 @@ def lowest_eigenvectors(h,n=10,nmax=maxsize):
   if h.shape[0]>nmax:
     if info: print("Calling ARPACK")
     eig,eigvec = slg.eigsh(h,k=n,which="SA",maxiter=100000)
+#    eigvec = [v for (e,v) in zip(eig,eigvec.T)]
   else:
     if info: print("Full diagonalization")
     eig,eigvec = dlg.eigh(h.todense())
-  eigvec = eigvec.T # transpose
+    eigvec = eigvec.T # transpose
 #  print(sorted(eig))
 #  eigevec = [v for (e,v) in sorted(zip(eig,eigvec))]
   return eigvec[0:n] # return eigenvectors
@@ -163,4 +193,12 @@ def lowest_eigenvectors(h,n=10,nmax=maxsize):
 
 def expm(m):
     m = todense(m)
+    return dlg.expm(m) # exponential matrix
+
+
+
+
+def ismatrix(m):
+    return type(m)==np.ndarray or issparse(m) or type(m)==np.matrix
+
 

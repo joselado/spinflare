@@ -1,6 +1,8 @@
 from __future__ import print_function
 import numpy as np
 from . import multioperator
+from . import operatornames
+from .algebra import kpm
 
 def get_moments_dmrg(self,n=1000):
   """Get the moments with DMRG"""
@@ -17,14 +19,12 @@ def get_moments_dmrg(self,n=1000):
 
 
 
-def get_moments_dynamical_correlator_dmrg(self,i=0,j=0,
-        name="XX",delta=1e-1):
+def get_moments_dynamical_correlator_dmrg(self,name=None,delta=1e-1):
   """Get the moments with DMRG"""
   # do some sanity checks
-  if i>=self.ns: raise 
-  if j>=self.ns: raise 
   if delta<0.0: raise 
-  self.get_gs() # compute ground state
+  if self.kpm_extrapolate: delta = delta*self.kpm_extrapolate_factor
+  if self.itensor_version!="julia": self.get_gs() # compute ground state
   # define the dictionary
   task = {      "dynamical_correlator": "true",
                 "kpmmaxm":str(self.kpmmaxm),
@@ -36,34 +36,26 @@ def get_moments_dynamical_correlator_dmrg(self,i=0,j=0,
                 }
   # go on, check the kind of input used to define the correlator
   if type(name[0])==multioperator.MultiOperator: 
-      name[0].name = "kpm_multioperator_i"
-      name[1].name = "kpm_multioperator_j"
       task["kpm_multioperator_i"] = "true"
       task["kpm_multioperator_j"] = "true"
-      self.execute(lambda: name[0].write()) # write
-      self.execute(lambda: name[1].write()) # write
-  else: # use a keyword, this is the classical way
-    try: # select the right operators, be consistent with mpscpp.x
-        from . import operatornames
-        namei,namej = operatornames.recognize(name)
-        namei = operatornames.hermitian(namei) # get the Hermitian operator
-    except:
-        print("Dynamical correlator not recognised")
-        raise
-    # setup the necessary elements in the tasks
-    task["kpm_operator_i"] = namei
-    task["kpm_operator_j"] = namej
-    task["site_i_kpm"] = str(i)
-    task["site_j_kpm"] = str(j)
-    task["kpm_multioperator_i"] = "false"
-    task["kpm_multioperator_j"] = "false"
+      mi = name[1] # first operator
+      mj = name[0] # second operator
+      mj = mj.get_dagger()
+      self.execute(lambda: mi.write(name="kpm_multioperator_i.in")) # write
+      self.execute(lambda: mj.write(name="kpm_multioperator_j.in")) # write
+  else: raise
   self.task = task # assign tasks
   self.write_task() 
   self.write_hamiltonian() # write the Hamiltonian to a file
   self.run() # perform the calculation
   m = self.execute(lambda: np.genfromtxt("KPM_MOMENTS.OUT").transpose())
 #  return m[1]
-  return m[0]+1j*m[1]
+  mus = m[0]+1j*m[1]
+  from .algebra import kpm
+  if self.kpm_extrapolate: 
+      return kpm.extrapolate_moments(mus,fac=self.kpm_extrapolate_factor)
+  else: return mus
+
 
 
 
@@ -71,25 +63,6 @@ def get_moments_dynamical_correlator_dmrg(self,i=0,j=0,
 
 from . import pychain
 from .algebra.kpm import generate_profile
-
-#def get_dos(self,n=1000,mode="DMRG",ntries=10):
-#  if mode=="DMRG": 
-##  if False: 
-#    mus = [get_moments_dmrg(self,n=n) for i in range(ntries)] # get the moments
-#    scale = np.genfromtxt("KPM_SCALE.OUT") # scale of the dos
-#  else:
-#    m  = self.get_full_hamiltonian()
-#    mus = [pychain.kpm.random_trace(m/15.0,ntries=1,n=1000)
-#                 for i in range(ntries)]
-#    scale = 1./15.
-#  mus = np.mean(np.array(mus),axis=0)
-#  mus = mus[0:100]
-#  xs = 0.99*np.linspace(-1.0,1.0,2000,endpoint=True) # energies
-#  ys = generate_profile(mus,xs,use_fortran=False).real # generate the DOS
-#  xs /= scale
-#  ys *= scale
-#  np.savetxt("DOS.OUT",np.matrix([xs,ys]).T)
-#  return (xs,ys)
 
 
 def restrict_interval(x,y,window):
@@ -109,16 +82,16 @@ def restrict_interval(x,y,window):
 
 
 
-def get_dynamical_correlator(self,n=1000,mode="DMRG",i=0,j=0,
-             window=[-1,10],name="XX",delta=2e-2,es=None,
+def get_dynamical_correlator(self,n=1000,
+             name=None,delta=1e-1,kernel="jackson",
+             es=np.linspace(-1.,10,500),deconvolve=None,
              **kwargs):
-  """
-  Compute a dynamical correlator using the KPM-DMRG method
-  """
-  if mode=="DMRG": 
+    """
+    Compute a dynamical correlator using the KPM-DMRG method
+    """
 # get the moments
-    mus = get_moments_dynamical_correlator_dmrg(self,i=i,j=j,
-            name=name,delta=delta,**kwargs) 
+    mus = get_moments_dynamical_correlator_dmrg(self,delta=delta,
+            name=name,**kwargs) 
     # scale of the dos
     kpmscales = self.execute(lambda: np.genfromtxt("KPM_SCALE.OUT"))
     emin = kpmscales[0] # minimum energy
@@ -128,39 +101,101 @@ def get_dynamical_correlator(self,n=1000,mode="DMRG",i=0,j=0,
     e0 = self.execute(lambda: np.genfromtxt("GS_ENERGY.OUT"))
     self.e0 = e0 # add this quantity
     n = self.execute(lambda: np.genfromtxt("KPM_NUM_POLYNOMIALS.OUT"))
-    xs = 0.99*np.linspace(-1.0,1.0,n*10,endpoint=True) # energies
-    ys = generate_profile(mus,xs,use_fortran=False,kernel="lorentz") # generate the DOS
+    xs = 0.99*np.linspace(-1.0,1.0,int(n*10),endpoint=False) # energies
+#    if self.kpm_extrapolate: kernel = None # no kernel
+    ys = generate_profile(mus,xs,use_fortran=False,kernel=kernel) # generate the DOS
     xs /= scale # scale back the energies
     xs += (emin+emax)/2. -emin # shift the energies
-    ys *= scale # renormalize the y positions
-#    e0 = self.gs_energy() # ground state energy
-    # now retain only an energy window
-  else: 
-    h = self.get_full_hamiltonian()
-    sc = self.get_pychain()
-    from .pychain import correlator as pychain_correlator
-    if delta is None: delta = float(self.ns)/n*1.5
-    if mode=="fullKPM":
-      (xs,ys) = pychain_correlator.dynamical_correlator_kpm(sc,h,n=n,i=i,j=j,
-                         namei=name[0],namej=name[1])
-    elif mode=="ED":
-      (xs,ys) = pychain_correlator.dynamical_correlator(sc,h,delta=delta,i=i,
-                        j=j,namei=name[0],namej=name[1])
-    else: raise
-  if es is None:
-    (xs,ys) = restrict_interval(xs,ys,window) # restrict the interval
-  else:
-    (xs,ys) = restrict_interval(xs,ys,[min(es),max(es)]) # restrict the interval
-  from scipy.interpolate import interp1d
-  fr = interp1d(xs, ys.real,fill_value=0.0,bounds_error=False)
-  fi = interp1d(xs, ys.imag,fill_value=0.0,bounds_error=False)
-  if es is None: 
-      ne = int(100*(window[1] - window[0])/delta) # number of energies
-      xs = np.linspace(window[0],window[1],ne)
-  else: xs = np.array(es).copy() # copy input array
-  ys = fr(xs) + 1j*fi(xs) # evaluate the interpolator
-#  np.savetxt("DYNAMICAL_CORRELATOR.OUT",np.matrix([xs.real,ys.real,ys.imag]).T)
-  return (xs,ys)
+    ys *= scale # renormalize the y values
+    from scipy.interpolate import interp1d
+    fr = interp1d(xs, ys.real,fill_value=0.0,bounds_error=False)
+    fi = interp1d(xs, ys.imag,fill_value=0.0,bounds_error=False)
+    (es,z) = (es,fr(es)+1j*fi(es)) # interpolate
+    return (es,z)
+#    from .algebra import kpm
+#    (es,z) = kpm.deconvolution(es,z,mode=deconvolve,delta=delta)
+#    return es,z
+
+
+
+
+
+def general_kpm_moments(self,X=None,A=None,B=None,
+        scale=None,wf=None,a=-0.8,b=0.8,
+        delta=1e-1,kernel="jackson",xs=None,**kwargs):
+    """
+    Compute a dynamical correlator of Bdelta(X)A using the KPM-DMRG method
+    """
+    if X is None: raise
+    # extrapolate
+    if self.kpm_extrapolate: delta = delta*self.kpm_extrapolate_factor
+    if scale is not None: 
+        X = X/scale # renormalize the operator for KPM
+        shift = 0.0 # no additional shift
+    else: # no scale provided
+        X,scale,shift = scale_operator(self,X,a=a,b=b)
+    num_p = int(3*scale/delta) # number of polynomials
+    print(num_p)
+    if wf is None: wf = self.get_gs() # no wavefunction provided
+    # compute the wavefunctions
+    if A is not None: wfa = self.applyoperator(A,wf)
+    else: wfa = wf
+    if B is not None: wfb = self.applyoperator(B,wf)
+    else: wfb = wf
+    # write the wavefunctions
+    self.execute(lambda: wfa.write(name="wfa.mps"))
+    self.execute(lambda: wfb.write(name="wfb.mps"))
+    # write the task
+    task = {    "general_kpm": "true",
+                "kpmmaxm":str(self.maxm),
+                "kpm_accelerate":self.kpm_accelerate,
+                "kpm_num_polynomials":str(num_p),
+                "kpm_cutoff":str(self.cutoff),
+                }
+    self.execute(lambda: X.write(name="kpm_operator.in"))
+    self.task = task # assign tasks
+    self.run() # perform the calculation
+    m = self.execute(lambda: np.genfromtxt("KPM_MOMENTS.OUT").transpose())
+    mus = m[0]+1j*m[1]
+    # perform extrapolation if 
+    if self.kpm_extrapolate: 
+      mus = kpm.extrapolate_moments(mus,fac=self.kpm_extrapolate_factor)
+    return mus,shift,scale
+
+def general_kpm(self,kernel="jackson",xs=None,**kwargs):
+    """
+    Compute a dynamical correlator of Bdelta(X)A using the KPM-DMRG method
+    """
+    mus,shift,scale = general_kpm_moments(self,**kwargs)
+    # scale of the distribution
+    kpmscales = scale
+    num_p = len(mus)
+    xs2 = 0.99*np.linspace(-1.0,1.0,int(num_p*10),endpoint=False) # energies
+    ys2 = generate_profile(mus,xs2,use_fortran=False,kernel=kernel) # generate the DOS
+    xs2 += shift # add the shift
+    xs2 *= scale # scale
+    ys2 /= scale # scale
+    if xs is None: return xs2,ys2
+    else:
+      from scipy.interpolate import interp1d
+      fr = interp1d(xs2, ys2.real,fill_value=0.0,bounds_error=False)
+      fi = interp1d(xs2, ys2.imag,fill_value=0.0,bounds_error=False)
+      return xs,fr(xs)+1j*fi(xs)
+
+
+def scale_operator(self,X,a=-0.9,b=0.9):
+    """Scale an operator so its spectra falls in the interval [a,b]"""
+    A = self.lowest_eigenvalue(X) # compute the lowest eigenvalue
+    B = -self.lowest_eigenvalue(-X) # compute the highest eigenvalue
+    ab = b - a  # width of the output
+    AB = B - A # width of the input
+    X = X - A # shift to zero
+    X = X/AB*ab # redefine width
+    X = X + a # shift to the right point
+    X = X.simplify() # simplify
+    scale = AB/ab # scaling of the operator
+    shift = (a*B - b*A)/(A-B) # required shift
+    return X,scale,shift # return the new operator
 
 
 

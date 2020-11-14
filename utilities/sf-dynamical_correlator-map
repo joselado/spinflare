@@ -47,17 +47,8 @@ z = np.abs(m[2]+1j*m[3])
 
 # get dimensions assuming uniform grid
 
-  
-ny = (y.max()-y.min())/abs(y[1]-y[0])
-ny = int(round(ny)) + 1
-nx = len(z)/ny
-
-nx = int(nx)
-ny = int(ny)
-
-#nx = 20
-#ny = len(z)//nx
-
+nx = len(np.unique(x))
+ny = len(np.unique(y))
 
 
 print("Detected",nx,ny,"grid")
@@ -89,6 +80,11 @@ maxx = np.max(m[0])
 miny = np.min(m[1])
 maxy = np.max(m[1])
 plt.imshow(z_inter, aspect='auto', origin='lower',cmap = plt.get_cmap("hot"), extent = ( minx, maxx, miny, maxy),interpolation='nearest',vmax=vmax)
+
+# set the colorbar
+cb = plt.colorbar(ticks=[0.,vmax])
+cb.ax.set_yticklabels([0, 'Max'])
+cb.set_label("DOS")
 
 plt.xlabel("Site")
 plt.title(ylabel)

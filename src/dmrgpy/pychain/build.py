@@ -9,6 +9,7 @@ from . import read
 from . import states
 from ..algebra import algebra
 from .. import multioperator
+from ..edtk import edchain
 
 usecpp = False # use c++ library
 
@@ -128,9 +129,10 @@ def get_representation(wfs,A):
 
 
 
-class Spin_chain():
+class Spin_chain(edchain.EDchain):
   size = 0 # size of the Hamiltonian
   def __init__(self):
+        super().__init__()
         self.path = os.getcwd()+"/.pychainfolder/"
         os.system("rm -rf "+self.path) # remove temporal folder
         os.system("mkdir "+self.path) # create temporal folder
@@ -183,20 +185,6 @@ class Spin_chain():
     return self.generate_hamiltonian(xs,ys,js,is_ising=False)
   def get_identity(self):
       return sparse.identity(self.sx.shape[0],dtype=np.complex)
-  def gs_energy(self):
-      """Compute ground state energy"""
-      if self.e0 is not None: return self.e0
-      if self.hamiltonian is None: raise # no Hamiltonian
-      h = self.get_operator(self.hamiltonian) # generate the matrix
-      (e0,wf0) = algebra.ground_state(h) # return energy
-      self.wf0 = wf0 # store ground state
-      self.e0 = e0 # store ground state energy
-      return e0 # return energy
-  def vev(self,MO):
-      """Compute a certain expectation value"""
-      self.gs_energy() # compute ground state energy
-      op = self.get_operator(MO) # get operator
-      return algebra.braket_wAw(self.wf0,op)
   def get_operator(self,name,i=0):
       """Return an operator"""
       if type(name)==multioperator.MultiOperator:
@@ -205,7 +193,10 @@ class Spin_chain():
         if name=="X" or name=="Sx": return self.sxi[i]
         elif name=="Y" or name=="Sy": return self.syi[i]
         elif name=="Z" or name=="Sz": return self.szi[i]
-        else: raise
+        elif name=="Id": return self.get_identity()
+        else: 
+            print(name)
+            raise
   def add_exchange(self,xcs,gmatrix=None): 
     """ Return matrix with the exchange field"""
     h = csc(([],([],[])),shape=(self.size,self.size)) # initialize 

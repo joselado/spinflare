@@ -2,29 +2,83 @@ from __future__ import print_function
 from copy import deepcopy
 import os
 import numpy as np
+from . import multioperator
 
 class MPS():
-  """Object for an MPS"""
-  def __init__(self,sc,name="psi_GS.mps"):
-    self.sc = sc # many body object
-    self.sc.wf0 = None # no wavefunction
-    self.path = sc.path # path to the spin chain folder
-    self.name = name # initial name
-    self.factor = 1.0 # factor of the mps
-  def dot(self,x):
-    return dot(self,x) # dot function
-  def copy(self):
-    """Copy this wavefunction"""
-    out = deepcopy(self) # copy everything
-    name = id_generator()+".mps" # create a new name
-    out.name = name
-    os.system("cp "+self.path+"/"+self.name+"  "+out.path+out.name)
-    return out
-  def __mul__(self,x):
-    """Multiply by an scalar"""
-    out = self.copy()
-    out.factor *= x # mutiply
-    return out
+    """Object for an MPS"""
+    def __init__(self,MBO=None,name="psi_GS.mps"):
+#        self.sc = sc # many body object
+#        self.sc.wf0 = None # no wavefunction
+        if MBO is None:
+            self.path = os.getcwd() # current directory
+            self.MBO = None
+        else:
+            self.path = MBO.path # path to the many body object folder
+            self.MBO = MBO
+        self.name = name # initial name
+#        self.factor = 1.0 # factor of the mps
+        self.mps = open(self.path+"/"+name,"rb").read() # read the MPS
+        self.sites = open(self.path+"/sites.sites","rb").read() # read sites
+    def set_MBO(self,MBO):
+        """Set the MBO"""
+        self.path = MBO.path # path to the many body object folder
+        self.MBO = MBO # set the object
+    def dot(self,x):
+        if self.MBO is not None: return self.MBO.overlap(self,x)
+        else: raise
+    def overlap(self,x):
+        if self.MBO is not None: return self.MBO.overlap(self,x)
+        else: raise
+    def __add__(self,x):
+        if self.MBO is not None: return self.MBO.summps(self,x)
+        else: raise
+    def __sub__(self,x):
+        return self + (-1)*x
+    def __neg__(self,x):
+        return (-1)*x
+    def copy(self,name=None):
+        """Copy this wavefunction"""
+        out = deepcopy(self) # copy everything
+        if name is None:
+          name = id_generator()+".mps" # create a new name
+        out.name = name
+#        self.execute(lambda: os.system("cp "+self.name+"  "+out.name))
+        return out
+    def write(self,name=None):
+        """Write the MPS in a folder"""
+        if name is None: name = self.name
+        open(self.path+"/"+name,"wb").write(self.mps) # write the MPS
+        open(self.path+"/sites.sites","wb").write(self.sites) # write the sites
+    def get_entropy(self,b=None):
+        """Compute entanglement entropy in a bond"""
+        if b is None: # compute all 
+            return np.mean([self.get_entropy(i) for i in range(1,self.MBO.ns)])
+        if self.MBO is not None: return self.MBO.get_entropy(self,b=b)
+        else: raise
+    def rename(self,name):
+        self.execute(lambda: os.system("mv "+self.name+"  "+name))
+        self.name = name
+    def execute(self,f):
+        pwd = os.getcwd() # path
+        os.chdir(self.path) # go
+        f()
+        os.chdir(pwd) # go back
+    def clean(self):
+        self.execute(lambda: os.system("rm "+self.name))
+        del self
+    def __rmul__(self,A):
+        """Multiply by an operator"""
+        if self.MBO is not None:
+            if type(A)==multioperator.MultiOperator: # MO type
+                return self.MBO.applyoperator(A,self) # apply the operator
+            elif multioperator.isnumber(A):
+                return A*multioperator.identity()*self
+            else: raise
+        else: raise
+    def __mul__(self,x):
+        if multioperator.isnumber(x):
+            return x*multioperator.identity()*self
+        else: raise
 
 
 
@@ -38,18 +92,13 @@ def id_generator(size=20, chars=string.ascii_uppercase + string.digits):
 
 
 
+from .randommps import random_mps
+from .randommps import random_product_state
 
-def dot(wf1,wf2):
-  """Compute scalar product"""
-  raise
-  sc = wf1.sc
-  sc.setup_task(mode="overlap") # compute overlap mode
-  os.system("cp "+wf1.path+wf1.name+"  "+wf1.path+"/overlap_wf1.mps") # copy
-  os.system("cp "+wf2.path+wf2.name+"  "+wf2.path+"/overlap_wf2.mps") # copy
-  os.system("rm -f "+sc.path+"/OVERLAP.OUT") # remove the file
-  sc.run(automatic=True) # run the calculation
-  out = np.genfromtxt(sc.path+"/OVERLAP.OUT") # get the data
-  return (out[0]+1j*out[1])*wf1.factor*wf2.factor # return result
+
+
+
+
 
 
 

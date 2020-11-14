@@ -212,17 +212,17 @@ def local_dos(m_in,i=0,n=200,use_fortran=use_fortran):
 
 
 
-def ldos0d(m_in,i=0,scale=10.,npol=None,ne=500,kernel="jackson"):
+def ldos(m_in,i=0,scale=10.,npol=None,ne=500,kernel="jackson"):
   """Return two arrays with energies and local DOS"""
   if npol is None: npol = ne
-  mus = local_dos(m_in/scale,i=i,n=npol) # get coefficients
+  mus = local_dos(csc_matrix(m_in)/scale,i=i,n=npol) # get coefficients
   xs = np.linspace(-1.0,1.0,ne,endpoint=True)*0.99 # energies
   ys = generate_profile(mus,xs,kernel=kernel)
   return (scale*xs,ys/scale)
 
 
 
-ldos = ldos0d
+ldos0d = ldos
 
 
 
@@ -271,6 +271,8 @@ def random_trace(m_in,ntries=20,n=200,fun=None,operator=None):
     else:
       mus = get_momentsA(v,m,n=2*n,A=operator) # get the chebychev moments
     return mus
+#  from . import parallel
+#  out = [pfun(i) for i in range(ntries)] # perform all the computations
   from . import parallel
   out = parallel.pcall(pfun,range(ntries))
   mus = np.zeros(out[0].shape,dtype=np.complex)
@@ -350,12 +352,18 @@ def dm_vivj_energy(m_in,vi,vj,scale=10.,npol=None,ne=500,x=None):
   if np.sum(np.abs(mus.imag))>0.001:
 #    print("WARNING, off diagonal has nonzero imaginary elements",np.sum(np.abs(mus.imag)))
     pass
-  if x is None: xs = np.linspace(-1.0,1.0,ne,endpoint=True)*0.99 # energies
-  else: xs = x/scale # use from input
-  ysr = generate_profile(mus.real,xs,kernel="lorentz",use_fortran=use_fortran)/scale*np.pi # so it is the Green function
+  xs = np.linspace(-1.0,1.0,npol*10,endpoint=True)*0.95 # energies
+  ysr = generate_profile(mus.real,xs,kernel="jackson",use_fortran=use_fortran)/scale*np.pi # so it is the Green function
   ysi = generate_profile(mus.imag,xs,kernel="jackson",use_fortran=use_fortran)/scale*np.pi # so it is the Green function
   ys = ysr - 1j*ysi
-  return (scale*xs,ys)
+  xs = scale*xs # reescale
+  ys = ys/scale # reescale
+  if x is None: return xs,ys
+  else: 
+      from scipy.interpolate import interp1d
+      yout = interp1d(xs, ys.real,fill_value=0.0,bounds_error=False)(x)
+      yout=yout+1j*interp1d(xs, ys.real,fill_value=0.0,bounds_error=False)(x)
+      return x,yout
 
 
 
@@ -371,6 +379,7 @@ def generate_profile(mus,xs,kernel="jackson",use_fortran=use_fortran):
   t = xs.copy()
   if kernel=="jackson": mus = jackson_kernel(mus)
   elif kernel=="lorentz": mus = lorentz_kernel(mus)
+  elif kernel is None: pass
   else: raise
   if use_fortran: # call the fortran routine
     ys = kpmf90.generate_profile(mus,xs) 
@@ -486,9 +495,22 @@ def edge_dos(intra0,inter0,scale=4.,w=20,npol=300,ne=500,bulk=False,
   else: return (xs,ds/w,dsb/w)
 
 
+from .kpmextrapolate import extrapolate_moments,deconvolution
 
 
 
-
-
+def reconstruct_chebyshev(mus,shift=0.,scale=1.0,
+        x=np.linspace(-1.,1.,2000),kernel="jackson"):
+    num_p = len(mus)
+    xs2 = 0.99*np.linspace(-1.0,1.0,int(num_p*10),endpoint=False) # energies
+    ys2 = generate_profile(mus,xs2,use_fortran=False,kernel=kernel) # generate the DOS
+    xs2 += shift # add the shift
+    xs2 *= scale # scale
+    ys2 /= scale # scale
+    if x is None: return xs2,ys2
+    else:
+      from scipy.interpolate import interp1d
+      fr = interp1d(xs2, ys2.real,fill_value=0.0,bounds_error=False)
+      fi = interp1d(xs2, ys2.imag,fill_value=0.0,bounds_error=False)
+      return x,fr(x)+1j*fi(x)
 

@@ -2,7 +2,7 @@ import os
 
 # compile Itensor library
 path = os.path.dirname(os.path.realpath(__file__))+"/../" # main path
-os.chdir(path+"/src/dmrgpy/mpscpp/ITensor-master")
+os.chdir(path+"/src/dmrgpy/mpscpp2/ITensor")
 import platform
 if platform.system()=="Linux": # Linux system
   os.system("cp options.save options.mk")
@@ -21,12 +21,12 @@ else:
   print("You may need to install the GNU C++ compiler")
   os.system("cp options.mac options.mk")
 # now do the compilation
-os.system("make clean ")
-os.system("make")
-os.chdir(path) # original directory
+#os.system("make clean ")
+#os.system("make")
+#os.chdir(path) # original directory
 
 # compile DMRG program
-os.chdir(path+"/src/dmrgpy/mpscpp")
+os.chdir(path+"/src/dmrgpy/mpscpp2")
 os.system("make clean")
 os.system("make")
 os.system("mv mpscpp mpscpp.x")

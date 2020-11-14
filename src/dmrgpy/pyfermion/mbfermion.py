@@ -7,9 +7,9 @@ from ..algebra import algebra
 from .. import operatornames
 from .. import multioperator
 from .. import funtk
+from ..edtk import edchain
 
-
-nmax = 15 # maximum number of levels
+nmax = 20 # maximum number of levels
 
 def get_spinless_hamiltonian(m0,hubbard=None):
     """Compute ground state energy"""
@@ -29,14 +29,17 @@ def gs_energy(m0,spinless=True,hubbard=None):
 
 
 
-class MBFermion():
+class MBFermion(edchain.EDchain):
     """
     Class for a many body fermionic Hamiltonian
     """
-    def __init__(self,n,fconf = lambda x: True):
+    def __init__(self,n,nf=None):
         """
         Initialize the object
         """
+        super().__init__()
+        if nf is not None: raise
+        fconf = lambda x: True
         self.n = n # number of different levels
         if n>nmax: raise # too big system
         self.c_dict = dict() # dictionary with the annhilation operators
@@ -52,6 +55,7 @@ class MBFermion():
             return self.c_dict[i] # return matrix
         else: # not computed yet
             m = states.destroy(self.basis,self.basis_dict,self.n,i)
+#            m = m.H
             self.c_dict[i] = m # store matrix
             return m
     def clean(self):
@@ -79,6 +83,7 @@ class MBFermion():
         Add a multioperator Hamiltonian
         """
         self.h = self.h + self.get_operator(m) # add the operator
+        self.hamiltonian = m
     def get_hopping(self,m):
         """
         Return Hopping matrix
@@ -100,22 +105,14 @@ class MBFermion():
         Return the generalized interaction
         """
         return get_vijkl(self,f)
-    def get_gs(self):
-        """
-        Return the ground state
-        """
-        e,wf = ground_state(self.h) # return GS
-        self.energy = e # store energy
-        self.wf0 = wf # store wavefunction
-        return self.energy
     def get_excited(self,**kwargs):
         """Excited states"""
-        return algebra.lowest_eigenvalues(MBF.h,**kwargs)
+        return algebra.lowest_eigenvalues(self.h,**kwargs)
     def get_cd(self,i):
         """
         Return the creation operator for site i in the many body basis
         """
-        return self.get_c(i).H # return the dagger
+        return np.conjugate(self.get_c(i)).T # return the dagger
     def get_density(self,i):
         """
         Return the density operator
@@ -170,15 +167,12 @@ class MBFermion():
             A = A@self.get_operator(namej,p[1]) # get matrix
             out.append(algebra.braket_wAw(self.wf0,A))
         return np.array(out) # return array
-    def vev(self,A):
-        """Return the ground state expectation value"""
-        m = self.get_operator(A) # return the operator
-        self.get_gs() # get ground state
-        return algebra.braket_wAw(self.wf0,m) # return the overlap
     def excited_vev(self,A,**kwargs):
         m = self.get_operator(A) # return the operator
         wfs = algebra.lowest_eigenvectors(self.h,**kwargs)
         return np.array([algebra.braket_wAw(wf,m) for wf in wfs])
+    def test(self):
+        test_commutation(self)
     def get_operator(self,name,i=0):
         """
         Return a certain operator
@@ -188,49 +182,13 @@ class MBFermion():
         if type(name)==multioperator.MultiOperator:
             return multioperator.MO2matrix(name,self) # return operator
 
-#        elif type(name)==multioperator.MultiOperator: # Multioperator
-#            out = self.get_identity()*0. # initialize
-#            for o in name.op: # loop over operators
-#                m = self.get_identity()
-#                m = m*o[0] # get coefficient
-#                for j in range(1,len(o)):
-#                  m = m@self.get_operator(o[j][0],int(o[j][1]))
-#                out = out + m
-#            return out # return operator
-        ### conventional procedure ###
         elif name=="density" or name=="N": return self.get_density(i)
         elif name=="C": return self.get_c(i)
+        elif name=="Id": return self.get_identity()
         elif name=="Cdag": return self.get_cd(i)
-        else: raise
-    def get_dynamical_correlator(self,i=0,j=0,
-            es=np.linspace(-1.0,10,500),delta=1e-1,
-            name="densitydensity"):
-        """
-        Compute the dynamical correlator
-        """
-        from ..algebra import kpm
-        from .. import operatornames
-        self.get_gs() # compute ground state
-        if type(name[0])==multioperator.MultiOperator: # multioperator
-          A = self.get_operator(name[0])
-          B = self.get_operator(name[1])
-        else:
-          namei,namej = operatornames.recognize(name) # get the operator
-          namei = operatornames.hermitian(namei) # get the dagger
-          A = self.get_operator(namei,i)
-          B = self.get_operator(namej,j)
-#        A = self.get_cd(i) # first operator
-#        B = self.get_cd(j) # second operator
-        vi = A@self.wf0 # first wavefunction
-        vj = B@self.wf0 # second wavefunction
-        m = -identity(self.h.shape[0])*self.energy+self.h # matrix to use
-        emax = slg.eigsh(self.h,k=1,ncv=20,which="LA")[0] # upper energy
-        scale = np.max([np.abs(self.energy),np.abs(emax)])*3.0
-        n = int(scale/delta) # number of polynomials
-        (xs,ys) = kpm.dm_vivj_energy(m,vi,vj,scale=scale,
-                                    npol=n*4,ne=n*10,x=es)
-        return xs,np.conjugate(ys)/scale*np.pi*2 # return correlator
-
+        else: 
+            print("Unrecognised operator",name)
+            raise
 
 
 
@@ -253,6 +211,30 @@ def get_vijkl(self,f):
 
 
 
+def test_commutation(self):
+    """Perform a test of the commutation relations"""
+    C = [self.get_operator("C",i) for i in range(self.n)]
+    Cdag = [self.get_operator("Cdag",i) for i in range(self.n)]
+    Id = self.get_operator("Id")
+    n = len(C) # number of sites
+    ntries = 8 # number of tries
+    for ii in range(ntries):
+        i = np.random.randint(n)
+        j = np.random.randint(n)
+        d = Cdag[i]@Cdag[j] + Cdag[j]@Cdag[i]
+        if np.max(np.abs(d))>1e-7: 
+            print("Cdag,Cdag failed",i,j)
+            raise
+        d = C[i]@C[j] + C[j]@C[i]
+        if np.max(np.abs(d))>1e-7: 
+            print("C,C failed",i,j)
+            raise
+        if i==j: d = Cdag[i]@C[j] + C[j]@Cdag[i] - Id
+        else: d = Cdag[i]@C[j] + C[j]@Cdag[i] 
+        if np.max(np.abs(d))>1e-7:
+            print("Cdag,C failed",i,j)
+            raise
+    print("Commutation test passed")
 
 
 

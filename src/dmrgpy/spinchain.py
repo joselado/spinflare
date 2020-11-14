@@ -1,4 +1,4 @@
-from .manybodychain import Many_Body_Hamiltonian
+from .manybodychain import Many_Body_Chain
 import numpy as np
 from .dmrgpy2pychain import correlator as correlatorpychain
 from .algebra import algebra
@@ -12,117 +12,88 @@ class Coupling():
     self.j = j
     self.g = g
 
-Spin_Hamiltonian = Many_Body_Hamiltonian
+Spin_Chain = Many_Body_Chain
 
-class Spin_Hamiltonian(Many_Body_Hamiltonian):
+# dictionary for the sites, with a more readable nomenclature
+label2site = dict() # dictionary
+label2site["1/2"] = 2
+label2site["S=1/2"] = 2
+label2site[2] = 2
+label2site["1"] = 3
+label2site["S=1"] = 3
+label2site[3] = 3
+label2site["3/2"] = 4
+label2site["S=3/2"] = 4
+label2site[4] = 4
+label2site["2"] = 5
+label2site["S=2"] = 5
+label2site[5] = 5
+label2site["5/2"] = 6
+label2site["S=5/2"] = 6
+label2site["S=3"] = 7
+label2site[6] = 6
+
+
+class Spin_Chain(Many_Body_Chain):
     """Class for spin Hamiltonians"""
     def __init__(self,sites):
-        Many_Body_Hamiltonian.__init__(self,sites)
+        sites = [label2site[s] for s in sites]
+        Many_Body_Chain.__init__(self,sites)
         # default exchange constants
-        self.set_exchange(lambda i,j: abs(i-j)==1*1.0)
         self.use_ampo_hamiltonian = True # use ampo
         self.pychain_object = None # pychain object
         self.Sx = [self.get_operator("Sx",i) for i in range(self.ns)]
         self.Sy = [self.get_operator("Sy",i) for i in range(self.ns)]
         self.Sz = [self.get_operator("Sz",i) for i in range(self.ns)]
+        self.Si = [self.Sx,self.Sy,self.Sz]
+    def SS(self,i,j):
+        return self.Sx[i]*self.Sx[j] + self.Sy[i]*self.Sy[j] + self.Sz[i]*self.Sz[j]
+    def set_fields(self,fun):
+        h = 0
+        for i in range(self.ns):
+            b = fun(i)
+            for j in range(3):  h = h + b[j]*self.Si[j][i]
+        self.fields = h
+        self.hamiltonian = self.exchange + self.fields # update Hamiltonian
+    def test(self,ntries=3,**kwargs):
+        """Check the anticommunation relations"""
+        Sx = self.Sx
+        Sy = self.Sy
+        Sz = self.Sz
+        for ii in range(ntries):
+            i = np.random.randint(self.ns)
+            j = np.random.randint(self.ns)
+            op = Sx[i]*Sy[j] - Sy[j]*Sx[i]
+            if i==j: op = op - 1j*Sz[i]
+            if not self.is_zero_operator(op,**kwargs): raise
     def set_exchange(self,fun):
       """Set the exchange coupling between sites"""
-      one = np.matrix(np.identity(3))
-      self.computed_gs = False # say that GS has not been computed
-      self.exchange = [] # empty list
+      h = 0
       for i in range(self.ns): # loop
         for j in range(self.ns):  # loop
           g = fun(i,j).real # call the function
           if np.sum(np.abs(fun(i,j)-fun(j,i)))>1e-5: raise # something wrong
+          one = np.identity(3) # identity matrix
           g = g*one # multiply by the identity
-          if np.sum(np.abs(g))!=0.0:
-            g = g/2. # normalize
-            c = Coupling(i,j,g) # create class
-            self.exchange.append(c) # store
-    def vev(self,MO,mode="DMRG",**kwargs):
-        """ Return a vaccum expectation value"""
-        if mode=="DMRG":
-            return self.vev_MB(MO,**kwargs)
-        elif mode=="ED":
-            SC = self.get_pychain() # get the object
-            SC.hamiltonian = self.get_hamiltonian() # store the MO
-            return SC.vev(MO,**kwargs) # return overlap
-    def gs_energy(self,mode="DMRG",**kwargs):
-        """
-        Return the ground state energy
-        """
-        if mode=="DMRG":
-          return Many_Body_Hamiltonian.gs_energy(self,**kwargs)
-        elif mode=="ED":
-          return pychainwrapper.gs_energy(self,**kwargs)
+          for ii in range(3):
+            for jj in range(3):
+                h = h + g[ii,jj]*self.Si[ii][i]*self.Si[jj][j]
+      self.exchange = h # exchange matrix
+      self.hamiltonian = self.exchange + self.fields # update Hamiltonian
+    def get_ED_obj(self):
+        return pychainwrapper.get_pychain(self)
     def get_pychain(self):
         return pychainwrapper.get_pychain(self)
     def get_full_hamiltonian(self):
         """Return the full Hamiltonian"""
         from . import pychainwrapper
         return pychainwrapper.get_full_hamiltonian(self)
-    def sisj_edge(self):
-        if not self.computed_gs: self.get_gs() # compute ground state
-        pairs = [(0,i) for i in range(self.ns)] # create pairs
-        cs = self.correlator(pairs=pairs,mode="DMRG") # compute
-        ns = range(len(cs)) # number of correlators
-        return np.array([ns,cs])
-    def get_magnetization(self,mode="DMRG",**kwargs):
-        if mode=="DMRG": # using DMRG
-            pairs = [(i,i) for i in range(self.ns)]
-            mx = self.get_correlator(pairs=pairs,name="X").real
-            my = self.get_correlator(pairs=pairs,name="Y").real
-            mz = self.get_correlator(pairs=pairs,name="Z").real
-            np.savetxt("MAGNETIZATION.OUT",np.matrix([mx,my,mz]).T)
-            return (mx,my,mz)
-        elif mode=="ED": # using ED
-            return pychainwrapper.get_magnetization(self,**kwargs)
-        else: raise
-    def get_dynamical_correlator(self,mode="DMRG",**kwargs):
-        """
-        Compute the dynamical correlator
-        """
-        if mode=="DMRG": # Use MPS
-            return Many_Body_Hamiltonian.get_dynamical_correlator_MB(self,
-                    **kwargs)
-        else: # use exact diagonalization
-            from . import pychainwrapper
-            return pychainwrapper.get_dynamical_correlator(self,
-                    **kwargs)
-    def get_excited(self,mode="DMRG",n=10,**kwargs):
-        """
-        Compute excited state energies
-        """
-        if mode=="DMRG":
-            return Many_Body_Hamiltonian.get_excited(self,n=n,
-                    **kwargs)
-        elif mode=="ED":
-            h = self.get_full_hamiltonian() # get the Hamiltonian
-            from . import pychain
-            return pychain.spectrum.eigenstates(h,k=n) # return energies
-        else: raise
-    def get_dos(self,mode="DMRG",**kwargs):
-        """
-        Compute the overall density of states
-        """
-        if mode=="DMRG":
-            return Many_Body_Hamiltonian.get_dos(self,**kwargs)
-        elif mode=="ED":
-            h = self.get_full_hamiltonian() # get the Hamiltonian
-            from .pychain import dos
-            return dos.dos_kpm(h,**kwargs)
-
-    def get_correlator(self,pairs=[[]],mode="DMRG",**kwargs):
-        """Return the correlator"""
-        if mode=="DMRG": # using DMRG
-            return Many_Body_Hamiltonian.get_correlator(self,pairs=pairs,
-                    **kwargs)
-        elif mode=="ED": # using exact diagonalization
-            self.to_folder()
-            m = correlatorpychain.correlator(self,pairs=pairs,**kwargs)
-            self.to_origin() # go to main folder
-            return m
-        else: raise
+    def get_magnetization(self,**kwargs):
+        mx = [self.vev(self.Sx[i],**kwargs) for i in range(self.ns)]
+        my = [self.vev(self.Sy[i],**kwargs) for i in range(self.ns)]
+        mz = [self.vev(self.Sz[i],**kwargs) for i in range(self.ns)]
+        np.savetxt("MAGNETIZATION.OUT",np.array([mx,my,mz]).T)
+        return np.array([mx,my,mz]).real
     def get_effective_hamiltonian(self,**kwargs):
         """Return the effective Hamiltonian"""
         return effectivehamiltonian.get_effective_hamiltonian(self,
@@ -149,4 +120,4 @@ class Spin_Hamiltonian(Many_Body_Hamiltonian):
         # still have to add the fields!!
         return out # return multioperator
 
-
+Spin_Hamiltonian = Spin_Chain # backwards compatibility

@@ -39,6 +39,8 @@ read(std::istream& s)
             else if(nm == 4) store.set(j,SpinThreeHalfSite(I));
             else if(nm == 5) store.set(j,SpinTwoSite(I));
             else if(nm == 6) store.set(j,SpinFiveHalfSite(I));
+            else if(nm == -2) store.set(j,Z3Site(I));
+            else if(nm == -3) store.set(j,Z4Site(I));
             else Error(format("SpinX cannot read index of size %d",nm));
             }
 	sfile.close() ;
@@ -72,6 +74,8 @@ SpinX(Args const& args)
       else if (nm==4) sites.set(i,SpinThreeHalfSite(i)); // use spin=3/2
       else if (nm==5) sites.set(i,SpinTwoSite(i)); // use spin=2
       else if (nm==6) sites.set(i,SpinFiveHalfSite(i)); // use spin=5/2
+      else if (nm==(-2)) sites.set(i,Z3Site(i)); // use Z3
+      else if (nm==(-3)) sites.set(i,Z4Site(i)); // use Z4
       else Error(format("SpinX cannot read index of size "));
     } ;
     sfile.close(); // close file
@@ -99,17 +103,35 @@ auto get_sites() { // function to get the sites
 }
 
 
+auto write_sites() { // function to get the sites
+    auto sites = get_sites(); // Get the different sites
+    writeToFile("sites.sites",sites); // write the sites
+}
+
+
 
 int site_type(int index) {
+    static int called = 0; // define a variable to check the calling
     ifstream sfile; // file to read
-    sfile.open("sites.in"); // file with the sites
-    int N, nm, out=-1;
-    sfile >> N; // read the number of sites and number of projections
-    for (int i=1;i<=N;i++)  {
-      sfile >> nm ; // read this spin
-      if (i-1==index) out = nm ; }
-    sfile.close() ;
-    cout << index << "  " << out << endl ;
+    static int N; // number of sites
+    static auto stypes = std::vector<int>(1); // define a dummy one
+    int out = -1;
+    // first call, read the file
+    if (called==0) { 
+      int nm;
+      sfile.open("sites.in"); // file with the sites
+      sfile >> N; // read the number of sites and number of projections
+      stypes.resize(N); // resize the array
+      for (int i=1;i<=N;i++)  {
+        sfile >> nm ; // read this spin
+	stypes.at(i-1) = nm ;// store
+//        if (i-1==index) out = nm ; 
+        }
+      sfile.close() ;
+      called = 1; // next time do not read
+      };
+    out = stypes.at(index); // get the value
+    cout << index << " site is of type  " << out << endl ;
     return out ;
 }
 

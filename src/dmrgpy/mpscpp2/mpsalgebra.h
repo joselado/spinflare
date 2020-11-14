@@ -27,4 +27,27 @@ static auto sum_mpo=[](auto A1,auto A2) {
 ;
 
 
+static auto mult_mpo=[](auto A1,auto A2) {
+        int maxm = get_int_value("maxm") ; // bond dimension
+        auto cutoff = get_float_value("cutoff") ;
+	auto args = Args({"Maxm", maxm, "Cutoff", cutoff});
+	auto sites = get_sites();
+	auto ampo = AutoMPO(sites); // temporal one
+        auto out = MPO(ampo) ; // create MPO
+	nmultMPO(A1,A2,out,args); // multiply MPO
+	return out;
+}
+;
+
+
+
+static auto sum_mps=[](auto A1,auto A2) {
+	return sum_mpo(A1,A2);
+//        int maxm = get_int_value("maxm") ; // bond dimension
+ //       auto cutoff = get_float_value("cutoff") ;
+//	auto args = Args({"Maxm", maxm, "Cutoff", cutoff});
+//	auto out = sum(A1,A2, args); // add contribution
+//	return out;
+}
+;
 

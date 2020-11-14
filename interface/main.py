@@ -228,8 +228,26 @@ def getsc(app):
     # now initialize the Hamiltonian
     fj = get_exchange_function(app) # add exchange field
     fb = get_field_function(app) # get the function that adds b field
-    sc.set_exchange(fj) # add the exchange
-    sc.set_fields(fb) # set the magnetic field
+    ns = len(spins)
+    h = 0 # initialize
+    # add exchange
+    for i in range(ns): # loop
+      for j in range(ns): # loop
+          cij = fj(i,j) # get matrix
+          Si = [sc.Sx[i],sc.Sy[i],sc.Sz[i]]
+          Sj = [sc.Sx[j],sc.Sy[j],sc.Sz[j]]
+          for ii in range(3):
+            for jj in range(3):
+                if cij[ii,jj]!=0.0: 
+                  h = h + cij[ii,jj]*Si[ii]*Sj[jj]
+    # add zeeman
+    for i in range(ns): # loop
+        Si = [sc.Sx[i],sc.Sy[i],sc.Sz[i]]
+        bi = fb(i)
+        for ii in range(3):
+            if bi[ii]!=0.0:
+                h = h + bi[ii]*Si[ii]
+    sc.set_hamiltonian(h)
     sc.maxm = int(app.get("maxm"))
     sc.kpmmaxm = int(app.get("maxm"))
     sc.nsweeps = int(app.get("nsweeps"))
@@ -245,7 +263,14 @@ def get_static_correlator():
     pairs = get_pairs(app,sc.ns,"static_arrangement") # get the pairs
     cname = app.getbox("static_type") # actual operator for the correlator
     # get the correlator
-    out = sc.get_correlator(pairs,name=cname) 
+    if cname=="XX": ops = [sc.Sx[p[0]]*sc.Sx[p[1]] for p in pairs]
+    elif cname=="YY": ops = [sc.Sy[p[0]]*sc.Sy[p[1]] for p in pairs]
+    elif cname=="ZZ": ops = [sc.Sz[p[0]]*sc.Sz[p[1]] for p in pairs]
+    elif cname=="SS": 
+        ops = [sc.Sz[p[0]]*sc.Sz[p[1]] + sc.Sx[p[0]]*sc.Sx[p[1]] + sc.Sy[p[0]]*sc.Sy[p[1]] for p in pairs]
+    else: raise
+    out = np.array([sc.vev(o) for o in ops])
+#    out = sc.get_correlator(pairs,name=cname) 
     np.savetxt("STATIC_CORRELATOR.OUT",np.array([range(len(pairs)),out.real,out.imag]).T)
     set_data("STATIC_CORRELATOR.OUT")
     execute_script("sf-correlator --input STATIC_CORRELATOR.OUT   --ylabel "+cname)
@@ -260,7 +285,11 @@ def get_dynamical_correlator_single():
     cname = app.getbox("dynamic_type_single") # operator
     delta = app.get("smearing_dynamic") # delta
     ii = int(app.get("dynamic_site_i_single")) # delta
-    (es,ds) = sc.get_dynamical_correlator(delta=delta,name=cname,i=ii,j=ii)
+    if cname=="XX": name = (sc.Sx[ii],sc.Sx[ii])
+    elif cname=="YY": name = (sc.Sy[ii],sc.Sy[ii])
+    elif cname=="ZZ": name = (sc.Sz[ii],sc.Sz[ii])
+    else: raise
+    (es,ds) = sc.get_dynamical_correlator(delta=delta,name=name)
     np.savetxt("DYNAMICAL_CORRELATOR.OUT",
             np.array([es,ds.real,ds.imag]).T)
     
@@ -275,6 +304,12 @@ def get_dynamical_correlator_map():
     cname = app.getbox("dynamic_type_map") # operator
     delta = app.get("smearing_dynamic") # delta
     pairs = get_pairs(app,sc.ns,"dynamic_arrangement") # get the pairs
+    def getAB(p):
+        ii,jj = p[0],p[1]
+        if cname=="XX": return (sc.Sx[ii],sc.Sx[jj])
+        elif cname=="YY": return (sc.Sy[ii],sc.Sy[jj])
+        elif cname=="ZZ": return (sc.Sz[ii],sc.Sz[jj])
+        else: raise
     fo = open("DYNAMICAL_CORRELATOR_MAP.OUT","w")
     ip = 0
     sc.get_gs() # compute ground state
@@ -284,8 +319,8 @@ def get_dynamical_correlator_map():
           sc0 = sc.clone() # clone directory
           def f(): # function to call
             print("Computing DYNCORR for",p)
-            out = sc0.get_dynamical_correlator(delta=delta,name=cname,
-                    i=p[0],j=p[1])
+            name = getAB(p)
+            out = sc0.get_dynamical_correlator(delta=delta,name=name)
             sc0.clean()
             return out
           return f # return dummy function
@@ -297,9 +332,8 @@ def get_dynamical_correlator_map():
     elif app.getbox("parallelization")=="No":
       def f(p): # function to call
         print("Computing DYNCORR for",p)
-        return sc.get_dynamical_correlator(delta=delta,name=cname,
-                i=p[0],j=p[1])
-        return out
+        name = getAB(p)
+        return sc.get_dynamical_correlator(delta=delta,name=name)
       outs = [f(p) for p in pairs] # compute all the outputs
     else: raise # something wrong
     for ip in range(len(outs)): # loop over outputs

@@ -1,36 +1,30 @@
-from .manybodychain import Many_Body_Hamiltonian
+from .manybodychain import Many_Body_Chain
 import numpy as np
 import scipy.linalg as lg
 from .pyfermion import mbfermion
 from .algebra import algebra
-from .fermionchaintk import dynamicalcorrelator
 from .fermionchaintk import staticcorrelator
 from .fermionchaintk import hamiltonian
+from . import funtk
+from . import gap
 
-
-class Fermionic_Hamiltonian(Many_Body_Hamiltonian):
+class Fermionic_Chain(Many_Body_Chain):
     """Class for fermionic Hamiltonians"""
-    spinful = False
-    def __init__(self,n,spinful=False):
-        if spinful: raise # this is outdated
-        self.spinful = spinful
-        if spinful:
-          Many_Body_Hamiltonian.__init__(self,[1 for i in range(n)])
-        else:
-          Many_Body_Hamiltonian.__init__(self,[0 for i in range(n)])
+    def __init__(self,n):
+        self.C = [self.get_operator("C",i) for i in range(n)]
+        self.Cdag = [self.get_operator("Cdag",i) for i in range(n)]
+        self.N = [self.get_operator("N",i) for i in range(n)]
+#        self.N = [self.Cdag[i]*self.C[i] for i in range(n)]
+        self.Id = self.get_operator("Id",1)
+        Many_Body_Chain.__init__(self,[0 for i in range(n)])
+        self.fermionic = True
+        self.use_ampo_hamiltonian = True # use ampo
+    def get_charge_gap(self,**kwargs):
+        """Return the charge gap"""
+        return gap.sector_gap(self,sum(self.N),**kwargs)
     def set_hoppings(self,fun):
-      """Add the spin independent hoppings"""
-      from .manybodychain import Coupling
-      self.computed_gs = False # say that GS has not been computed
-      self.hoppings = dict()
-      if callable(fun):
-        for i in range(self.ns): # loop
-            for j in range(self.ns): # loop
-                if self.sites[i] in [0,1] and self.sites[j] in [0,1]:
-                    c = fun(i,j)
-                    if np.abs(c)>0.0:
-                        self.hoppings[(i,j)] = Coupling(i,j,c) # store
-      else: raise # Error
+        """Add the spin independent hoppings"""
+        self.set_hoppings_MB(fun)
     def get_density_spinless(self,**kwargs):
         """Return the electronic density"""
         return staticcorrelator.get_density_spinless(self,**kwargs)
@@ -54,72 +48,33 @@ class Fermionic_Hamiltonian(Many_Body_Hamiltonian):
         Return the superfluid density
         """
         return staticcorrelator.get_pairing_spinless(self,**kwargs)
-    def vev_spinless(self,MO,mode="DMRG",**kwargs):
-        """ Return a vaccum expectation value"""
-        if mode=="DMRG":
-            return self.vev_MB(MO,**kwargs)
-        elif mode=="ED": 
-            MBF = self.get_MBF() # get the object
-            return MBF.vev(MO,**kwargs) # return overlap
-        else: raise # unrecognized
-    def vev(self,MO,**kwargs): return self.vev_spinless(MO,**kwargs)
+    def vev_spinless(self,MO,**kwargs):
+        """ Return a vacuum expectation value"""
+        return self.vev(MO,**kwargs)
     def excited_vev_spinless(self,MO,mode="DMRG",**kwargs):
         """ Return a vaccum expectation value"""
         if mode=="DMRG": return self.excited_vev_MB(MO,**kwargs)
-        elif mode=="ED": return self.get_MBF().excited_vev(MO,**kwargs) 
+        elif mode=="ED": return self.get_ED_obj().excited_vev(MO,**kwargs) 
     def excited_vev(self,MO,**kwargs): 
         return self.excited_vev_spinless(MO,**kwargs)
     def hamiltonian_free(self,pairs=[[]]):
         """
         Return the free part of the fermionic Hamiltonian
         """
-#        if len(self.hubbard)!=0: raise # not implemented
-#        else: # everythin ok so far
-        if self.spinful: # spinful
-          m = np.zeros((self.ns*2,self.ns*2),dtype=np.complex) # matrix
-          for key in self.hoppings:
-              t = self.hoppings[key]
-              m[2*t.i,2*t.j] = t.g
-              m[2*t.i+1,2*t.j+1] = t.g
-          if type(self.spinful_hoppings)!=type(dict()):
-            m = m + self.spinful_hoppings
-        else: # spinless Hamiltonian
-          m = np.zeros((self.ns,self.ns),dtype=np.complex) # matrix
-          for key in self.hoppings:
+        m = np.zeros((self.ns,self.ns),dtype=np.complex) # matrix
+        for key in self.hoppings:
               t = self.hoppings[key]
               m[t.i,t.j] = t.g
         return m
-    def get_excited(self,mode="DMRG",**kwargs):
-          """
-          Wrapper for static correlator
-          """
-          if mode=="DMRG": # using DMRG
-            return Many_Body_Hamiltonian.get_excited(self,**kwargs)
-          elif mode=="ED":
-            MBF = self.get_MBF() # get the object
-            return algebra.lowest_eigenvalues(MBF.h,**kwargs)
-    def get_correlator_spinless(self,**kwargs):
-          """
-          Compute static correlator
-          """
-          return staticcorrelator.get_correlator_spinless(self,**kwargs)
-    def get_correlator(self,**kwargs):
-          """
-          Compute static correlator
-          """
-          return staticcorrelator.get_correlator_spinless(self,**kwargs)
-    def get_dynamical_correlator(self,**kwargs):
-        """
-        Compute a dynamical correlator, standard name
-        """
-        return dynamicalcorrelator.get_dynamical_correlator_spinless(self,
-                **kwargs)
-    def get_dynamical_correlator_spinless(self,**kwargs):
-        """
-        Compute a dynamical correlator, specific function for spinless
-        """
-        return dynamicalcorrelator.get_dynamical_correlator_spinless(self,
-                **kwargs)
+#    def get_excited(self,mode="DMRG",**kwargs):
+#          """
+#          Wrapper for static correlator
+#          """
+#          if mode=="DMRG": # using DMRG
+#            return Many_Body_Chain.get_excited(self,**kwargs)
+#          elif mode=="ED":
+#            MBF = self.get_ED_obj() # get the object
+#            return algebra.lowest_eigenvalues(MBF.h,**kwargs)
     def get_correlator_free(self,pairs=[[]]):
           """Get the correlator for free fermions"""
           m = self.hamiltonian_free() # get the single body matrix
@@ -149,30 +104,30 @@ class Fermionic_Hamiltonian(Many_Body_Hamiltonian):
     def gs_energy(self,mode="DMRG",**kwargs):
         """Compute ground state energy, overrriding the method"""
         if mode=="DMRG": 
-            return Many_Body_Hamiltonian.gs_energy(self,**kwargs)
+            return Many_Body_Chain.gs_energy(self,**kwargs)
         elif mode=="ED": 
 #            if np.max(np.abs(self.hubbard_matrix))<1e-6 and self.vijkl is None:
 #                return self.gs_energy_free()
 #            else:
-                MBF = self.get_MBF()
+                MBF = self.get_ED_obj()
                 return algebra.lowest_eigenvalues(MBF.h,n=1)[0]
         else: raise # unrecognised
-    def get_MBF(self):
+    def get_ED_obj(self):
         """
         Return the many body fermion object
         """
-        m0 = self.hamiltonian_free() # free Hamiltonian
-        MBf = mbfermion.MBFermion(m0.shape[0]) # create object
-        MBf.add_hopping(m0)
-        MBf.add_pairing(self.pairing) # add pairing
-        MBf.add_hubbard(self.hubbard_matrix) # add hubbard term
-        MBf.add_vijkl(self.vijkl) # add generalized interaction
-        # add generalized term
-        MBf.add_multioperator(self.hamiltonian_multioperator) 
+        MBf = mbfermion.MBFermion(self.ns) # create object
+        MBf.add_multioperator(self.hamiltonian) 
         return MBf # return the object
-    def get_kpm_scale(self):
-        """Energy scale for KPM method"""
-        return 4*self.ns*(2.+10*np.mean(np.abs(self.hubbard_matrix)))
+    def execute(self,f):
+        """
+        This is a temporal fix to use the C operators in Julia ITensor
+        """
+        if self.itensor_version=="julia": # use the fermionic representation
+            from . import multioperator
+            multioperator.use_jordan_wigner = False
+        return Many_Body_Chain.execute(self,f)
+
 
 
 
@@ -227,15 +182,49 @@ def get_gr(self,delta=0.002,es=np.linspace(-10.0,10.0,800),i=0,j=0):
 
 
 
+class Majorana_Chain(Fermionic_Chain):
+    def __init__(self,n):
+        """ Rewrite the init method to take twice as many sites"""
+        nf = (n+1)//2 # number of conventional fermions
+        nf = max([2,nf]) # fix
+        super().__init__(nf) # initialize the Hamiltonian
+        # define the Majorana operators
+        G = [0 for i in range(nf*2)] # empty list
+        for jf in range(nf): # loop over fermions
+            G[2*jf] = (self.C[jf] + self.Cdag[jf])/np.sqrt(2)
+            G[2*jf+1] = 1j*(self.C[jf] - self.Cdag[jf])/np.sqrt(2)
+        self.G = [G[i] for i in range(n)] # sotre those operators
+        del self.C  # clean
+        del self.Cdag  # clean
+        del self.N # clean
 
-class Spinful_Fermionic_Hamiltonian(Fermionic_Hamiltonian):
+
+
+
+
+class Spinful_Fermionic_Chain(Fermionic_Chain):
     """
     Class to deal with fermionic Hamiltonians with
     spin degree of freedom
     """
     def __init__(self,n):
         """ Rewrite the init method to take twice as many sites"""
-        super().__init__(2*n)
+        super().__init__(2*n) # initialize the Hamiltonian
+        self.Sx = [0.5*self.Cdag[2*i]*self.C[2*i+1] +
+                0.5*self.Cdag[2*i+1]*self.C[2*i] for i in range(n)]
+        self.Sy = [-0.5*1j*self.Cdag[2*i]*self.C[2*i+1] +
+                1j*0.5*self.Cdag[2*i+1]*self.C[2*i] for i in range(n)]
+        self.Sz = [0.5*self.N[2*i] +
+                (-1)*0.5*self.N[2*i+1] for i in range(n)]
+        self.Delta = [0.5*self.C[2*i]*self.C[2*i+1] for i in range(n)]
+        self.Cup = [self.C[2*i] for i in range(n)]
+        self.Cdagup = [self.Cdag[2*i] for i in range(n)]
+        self.Cdn = [self.C[2*i+1] for i in range(n)]
+        self.Cdagdn = [self.Cdag[2*i+1] for i in range(n)]
+        self.Nup = [self.N[2*i] for i in range(n)]
+        self.Ndn = [self.N[2*i+1] for i in range(n)]
+        self.Ntot = [self.Nup[i]+self.Ndn[i] for i in range(n)]
+        self.use_ampo_hamiltonian = True # use ampo
     def get_density_spinful(self,**kwargs):
         """
         Return the density in each site, summing over spin channels
@@ -254,13 +243,6 @@ class Spinful_Fermionic_Hamiltonian(Fermionic_Hamiltonian):
         Return the expectation value of the onsite pairing
         """
         return staticcorrelator.get_onsite_pairing_spinful(self,**kwargs)
-    def get_dynamical_correlator_spinful(self,**kwargs):
-        """Return the dynamical correlator of an spinful system"""
-        return dynamicalcorrelator.get_dynamical_correlator_spinful(self,
-                **kwargs)
-    def get_dynamical_correlator(self,**kwargs):
-        """Return the dynamical correlator of an spinful system"""
-        return self.get_dynamical_correlator_spinful(**kwargs)
     def set_hubbard_spinful(self,fun):
         """
         Add Hubbard interation in a spinful manner
@@ -288,16 +270,6 @@ class Spinful_Fermionic_Hamiltonian(Fermionic_Hamiltonian):
     def get_density_fluctuation(self,**kwargs):
         """Return the electronic density"""
         return staticcorrelator.get_density_fluctuation_spinful(self,**kwargs)
-    def get_correlator_spinful(self,**kwargs):
-        """
-        Get a static correlator
-        """
-        return staticcorrelator.get_correlator_spinful(self,**kwargs)
-    def get_correlator(self,**kwargs):
-        """
-        Get a static correlator
-        """
-        return staticcorrelator.get_correlator_spinful(self,**kwargs)
     def set_exchange(self,fun):
         """
         Add exchange coupling betwwen the spinful fermionic sites
@@ -314,8 +286,23 @@ class Spinful_Fermionic_Hamiltonian(Fermionic_Hamiltonian):
 
 
 
+class Spinon_Chain(Spinful_Fermionic_Chain):
+    """Class for spinon chains"""
+    def set_hamiltonian(self,h,**kwargs):
+        """Redefine the write Hamiltonian method"""
+        U = 6. # remove the single/double occupied states
+        for i in range(len(self.Sx)): 
+            h = h + U*(self.Nup[i]-.5)*(self.Ndn[i]-.5)
+        super().set_hamiltonian(h,**kwargs) # set the modified Hamiltonian
 
 
 
 
+
+
+
+
+
+Fermionic_Hamiltonian = Fermionic_Chain
+Spinful_Fermionic_Hamiltonian = Spinful_Fermionic_Chain
 

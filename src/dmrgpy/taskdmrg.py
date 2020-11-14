@@ -45,24 +45,23 @@ def write_tasks(self):
   #
   if self.use_ampo_hamiltonian: 
       fo.write(" use_ampo_hamiltonian = true\n")
-  if self.gs_from_file and self.starting_file_gs is not None: 
+  if self.gs_from_file and self.wf0 is not None: 
+      self.execute(self.wf0.write) # write WF
       fo.write(" gs_from_file = true\n")
-      fo.write(" starting_file_gs = "+self.starting_file_gs+"\n") # starting WF
+      fo.write(" starting_file_gs = "+self.wf0.name+"\n") # starting WF
       fo.write(" skip_dmrg_gs = "+obj2str(self.skip_dmrg_gs)+"\n") # starting WF
   else: fo.write(" gs_from_file = false\n")
   for key in self.task:
     fo.write(key+" = "+obj2str(self.task[key])+"\n")
+  if self.sites_from_file: 
+      fo.write(" sites_from_file = true\n")
 #("GS = true\ngap = false\ncorrelator = false\n}\n")
   # parameters of dmrg algorithm
   fo.write(" maxm = "+str(self.maxm)+"\n") # maximum bond dimension
+  fo.write(" noise = "+str(self.noise)+"\n") # maximum bond dimension
   fo.write(" cutoff = "+str(self.cutoff)+"\n") # maximum discarded weight
   fo.write(" nsweeps = "+str(self.nsweeps)+"\n") # maximum discarded weight
   ### this is a special addition to allow for generic interactions ###
-  if self.hamiltonian_multioperator is not None: # if there is a multioperator
-      dmh = self.hamiltonian_multioperator.get_dict() # get dictionary
-      fo.write("use_multioperator_hamiltonian = true\n") # set it to true
-      for key in dmh:
-        fo.write(key+" = "+obj2str(dmh[key])+"\n") # write that term
   fo.write("}\n")
   fo.close()
 
