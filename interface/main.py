@@ -312,7 +312,6 @@ def get_dynamical_correlator_map():
         else: raise
     fo = open("DYNAMICAL_CORRELATOR_MAP.OUT","w")
     ip = 0
-    sc.get_gs() # compute ground state
     #### Parallel execution ###
     if app.getbox("parallelization")=="Yes": # parallel calculation
         def fm(p): # function to call
@@ -330,6 +329,7 @@ def get_dynamical_correlator_map():
         outs = parallel.multicall([fm(p) for p in pairs])
     #### Serial execution ####
     elif app.getbox("parallelization")=="No":
+      sc.get_gs() # compute ground state
       def f(p): # function to call
         print("Computing DYNCORR for",p)
         name = getAB(p)
