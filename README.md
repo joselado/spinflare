@@ -50,7 +50,11 @@ sudo apt-get install liblapack-dev
 The example below shows the calculations of the dynamical structure factor of a Heisenberg chain with S=1 and 48 sites. This computation shows the emergence of the bulk Haldane gap and the gapless fractionalizated edge modes.
 ![Alt text](images/dyncorr_Haldane.png?raw=true "Dynamical correlator of the Haldane Heisenberg model")
 
-### Local magnetization of a quantum chain with an edge field
+### Local magnetization of an S=1/2 quantum chain with an edge field
 The example below shows the local magnetization for a Heisenberg chain of S=1/2, with a local magnetic field in the x direction applied on the first site. Due to the quantum disordered ground state, it is observed a decay of the magnetization as we go further from the edge site. The decay is a power-law due to the gapless nature of the system.
 ![Alt text](images/magnetization_s12.png?raw=true "Local magnetization of a S=1/2 Heisenberg chain with a local field")
+
+### Non-local correlator of an S=1 chain (with S=1/2 on the edge)
+The example below shows the non-local correlator (in log scale) between the edge and the different sites for a Heisenberg chain of S=1 (with S=1/2 in the edge to lift the topological modes). Due to the many-body gap of the system, the correlator decays exponentially with distance as seen in the plot.
+![Alt text](images/correlator_s1.png?raw=true "Non-local correlator in log scale")
 
