@@ -377,6 +377,8 @@ def get_magnetization():
     elif name=="Y": ops = sc.Sy 
     elif name=="Z": ops = sc.Sz
     else: raise
+    mode = get_mode()
+    sc.mode = mode
     mi = np.array([sc.vev(o) for o in ops]).real
     np.savetxt("MAGNETIZATION.OUT",np.array([inds,mi]).T)
     set_data("MAGNETIZATION.OUT")

@@ -69,26 +69,25 @@ def funfig(obj):
     
     # 
     x = np.linspace(0.,1.,1000)
-    y = np.linspace(0.,1.,1000)
+    ylim = obj.get_slider("maxy") 
+    y = np.linspace(0.,1.,1000)*ylim
     
     z_inter = f(x,y)
     
     
     # now plot the data
-    
     vmax = np.percentile(z_inter,95)
     vmax = np.max(np.abs(z_inter))*obj.get_slider("saturation")
     minx = np.min(m[0])
     maxx = np.max(m[0])
     miny = np.min(m[1])
-    maxy = np.max(m[1])
+    maxy = np.max(m[1])*ylim
     plt.imshow(z_inter, aspect='auto', origin='lower',cmap = plt.get_cmap("hot"), extent = ( minx, maxx, miny, maxy),interpolation='nearest',vmax=vmax)
     
     # set the colorbar
     cb = plt.colorbar(ticks=[0.,vmax])
     cb.ax.set_yticklabels([0, 'Max'])
     cb.set_label("Spectral function")
-    
     plt.xlabel("Site")
     plt.title(ylabel)
     plt.ylabel("$\omega$ [J]")
@@ -102,6 +101,7 @@ app,main = get_interface(funfig) # get the interface
 ps = np.linspace(0.0,1.0,100) # phases
 #main.add_slider(label="Wavevector",key="k",vs=ks) # initialize the slider
 main.add_slider(label="Saturation",key="saturation",vs=ps,v0=0.7) # initialize the slider
+main.add_slider(label="Maximum energy",key="maxy",vs=ps,v0=0.7) # initialize the slider
 #main.add_text(label="Shift",key="dy",text="0.0") # initialize the slider
 # initialize the combobox
 #main.add_combobox(["red","blue","black"],label="Color",key="c")
