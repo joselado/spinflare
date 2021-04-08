@@ -126,15 +126,16 @@ def todense(m):
 def lowest_eigenvalues(h,n=10,nmax=maxsize):
   """Get a ground state"""
   info = False
-  if h.shape[0]>nmax:
-    if info: print("Calling ARPACK")
-    eig,eigvec = slg.eigsh(h,k=n,which="SA",maxiter=100000)
-    eig = np.sort(eig)
+  if h.shape[0]>nmax: # for sparse use arpack
+      eig,vs = lowest_states(h,n=n)
   else:
     if info: print("Full diagonalization")
-    ishermitian(h)
-    eig = dlg.eigvalsh(h.todense())
-  return eig[0:n] # return eigenvalues
+    if ishermitian(h):
+      eig = dlg.eigvalsh(h.todense())
+    else:
+      eig = dlg.eigvals(h.todense())
+      eig = [y for (x,y) in sorted(zip(eig.real,eig))]
+  return eig[0:n]
 
 
 def lowest_states(h,n=10,nmax=maxsize):
@@ -142,28 +143,42 @@ def lowest_states(h,n=10,nmax=maxsize):
   info = False
   if h.shape[0]>nmax:
     if info: print("Calling ARPACK")
-    eig,eigvec = slg.eigsh(h,k=n,which="SA",maxiter=100000)
-    eigvec = [v for (e,v) in sorted(eig.eigvec.T)]
-    eig = np.sort(eig)
-    return (eig,eigvec)
+    if ishermitian(h): # Hermitian matrix
+      eig,eigvec = slg.eigsh(h,k=n,which="SA",maxiter=100000)
+      eig,eigvec = sorteigen(eig,eigvec.T)
+      return (eig,eigvec)
+    else: 
+      eig,eigvec = slg.eigs(h,k=n,which="SR",maxiter=100000)
+      eig,eigvec = sorteigen(eig,eigvec.T)
+      return (eig,eigvec)
   else:
     if info: print("Full diagonalization")
-    ishermitian(h)
-    eig,vs = dlg.eigh(h.todense())
-  return eig[0:n],vs.T[0:n] 
+    if ishermitian(h): # Hermitian matrix
+      eig,vs = dlg.eigh(h.todense())
+      return eig[0:n],vs.T[0:n] 
+    else: # non Hermitian matrix
+      eig,vs = dlg.eig(h.todense())
+      eig,vs = sorteigen(eig,vs.T)
+      return eig[0:n],vs[0:n]
 
+lowest_eigenvectors = lowest_states
 
-
+def sorteigen(eig,vs):
+    """Return sorted eigenvalues and eigenvectors"""
+    vs = [y for (x,y) in sorted(zip(eig.real,vs),key=lambda x: x[0])]
+    eig = [y for (x,y) in sorted(zip(eig.real,eig),key=lambda x: x[0])]
+    return np.array(eig),vs
 
 
 
 def ishermitian(m):
+    """Check if a matrix is Hermitian"""
     d = m - np.conjugate(m.T)
-    if np.max(np.abs(d))>1e-6: 
-        print("Hamiltonian is not Hermitian")
-        raise
+    if np.max(np.abs(d))>1e-6: return False
+    return True
 
 def expm(m):
+    """Compute exponential"""
     m = todense(m)
     return dlg.expm(m)
 
@@ -174,27 +189,37 @@ def inv(m):
     return dlg.inv(m)
 
 
-
-def lowest_eigenvectors(h,n=10,nmax=maxsize):
-  """Get a ground state"""
-  info = False
-  if h.shape[0]>nmax:
-    if info: print("Calling ARPACK")
-    eig,eigvec = slg.eigsh(h,k=n,which="SA",maxiter=100000)
-#    eigvec = [v for (e,v) in zip(eig,eigvec.T)]
-  else:
-    if info: print("Full diagonalization")
-    eig,eigvec = dlg.eigh(h.todense())
-    eigvec = eigvec.T # transpose
-#  print(sorted(eig))
-#  eigevec = [v for (e,v) in sorted(zip(eig,eigvec))]
-  return eigvec[0:n] # return eigenvectors
+#
+#def lowest_eigenvectors(h,n=10,nmax=maxsize):
+#  """Get a ground state"""
+#  info = False
+#  if h.shape[0]>nmax:
+#    if info: print("Calling ARPACK")
+#    eig,eigvec = slg.eigsh(h,k=n,which="SA",maxiter=100000)
+##    eigvec = [v for (e,v) in zip(eig,eigvec.T)]
+#  else:
+#    if info: print("Full diagonalization")
+#    eig,eigvec = dlg.eigh(h.todense())
+#    eigvec = eigvec.T # transpose
+##  print(sorted(eig))
+##  eigevec = [v for (e,v) in sorted(zip(eig,eigvec))]
+#  return eigvec[0:n] # return eigenvectors
+#
 
 
 def expm(m):
     m = todense(m)
     return dlg.expm(m) # exponential matrix
 
+#def expm(m):
+#    m = todense(m)
+#    es,vs = dlg.eig(m)
+#    d = np.zeros(m.shape,dtype=np.complex)
+#    for i in range(len(es)): d[i,i] = np.exp(es[i])
+#    R = vs.T
+#    Rh = np.conjugate(R.T)
+#    U = Rh@d@R
+#    return U
 
 
 

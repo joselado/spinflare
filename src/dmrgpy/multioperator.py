@@ -39,6 +39,8 @@ class MultiOperator():
     def simplify(self):
         from .multioperatortk import sympymultioperator
         return sympymultioperator.simplifyMO(self)
+    def max_op_prod(self):
+        """Maximum number of oprators in a product"""
     def get_bandwidth(self,MBO):
         """Get the bandwidth"""
         return MBO.bandwidth(self)
@@ -50,6 +52,8 @@ class MultiOperator():
         """Check if an operator is antiHermitian"""
         dh = self + self.get_dagger() ; dh = dh.simplify()
         return dh==0
+    def is_zero(self):
+        return self.simplify()==0
     def copy(self):
         from copy import deepcopy
         return deepcopy(self) # return a copy
@@ -64,15 +68,17 @@ class MultiOperator():
     def __add__(self,a):
         """Sum operation"""
         if a is None: return self.copy() # return the Hamiltonian
-        elif isnumber(a): # if it is a number
-            return self+a*identity() # return identity
         elif type(a)==MultiOperator: # if it is a multioperator
           out = self.copy() # create a copy
           out.op = self.op + a.op # sum the two operators
           out.i = self.i + a.i + 1 # increase the index
           out.clean()
           return out # return the sum
-        else: raise
+        elif isnumber(a): # if it is a number
+            return self+a*identity() # return identity
+        else: 
+            print(type(a),a)
+            raise
     def __radd__(self,a): return self.__add__(a)
     def __rmul__(self,a):
         """Multiply by a number"""
@@ -192,6 +198,7 @@ def obj2MO(a,name="multioperator"):
     elif type(a)==MultiOperator:
         a.name = name
         return a
+    elif isnumber(a): return a*identity() 
     else: raise # unidentified input
 
 

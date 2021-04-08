@@ -13,6 +13,8 @@ class Fermionic_Chain(Many_Body_Chain):
     def __init__(self,n):
         self.C = [self.get_operator("C",i) for i in range(n)]
         self.Cdag = [self.get_operator("Cdag",i) for i in range(n)]
+        self.A = [self.get_operator("A",i) for i in range(n)]
+        self.Adag = [self.get_operator("Adag",i) for i in range(n)]
         self.N = [self.get_operator("N",i) for i in range(n)]
 #        self.N = [self.Cdag[i]*self.C[i] for i in range(n)]
         self.Id = self.get_operator("Id",1)
@@ -288,12 +290,27 @@ class Spinful_Fermionic_Chain(Fermionic_Chain):
 
 class Spinon_Chain(Spinful_Fermionic_Chain):
     """Class for spinon chains"""
-    def set_hamiltonian(self,h,**kwargs):
-        """Redefine the write Hamiltonian method"""
-        U = 6. # remove the single/double occupied states
+    def get_gs(self,**kwargs):
+        """Redefine the ground state method"""
+        if self.computed_gs: return self.wf0 # return the wavefunction
+        P = 1. # parton projector
         for i in range(len(self.Sx)): 
-            h = h + U*(self.Nup[i]-.5)*(self.Ndn[i]-.5)
-        super().set_hamiltonian(h,**kwargs) # set the modified Hamiltonian
+            P = P*(-2*self.Nup[i]*self.Ndn[i] + self.Ndn[i] + self.Nup[i])
+            #P = P*(1.- self.Nup[i]*self.Ndn[i]) #  Gutzwiller projection
+        from .mpsalgebra import mpsarnoldi
+        super().gs_energy(**kwargs) # get the GS
+        wf = self.wf0
+#        wf = None # no initial guess
+#        print("Projection",wf.dot(P*wf).real)
+        wf = mpsarnoldi(self,self.hamiltonian,mode="GS",P=P,wf=wf)
+        print("Projection",wf.dot(P*wf).real)
+        self.computed_gs = True # computed GS
+        self.wf0 = wf # store ground state
+        return wf
+    def gs_energy(self,**kwargs):
+        wf = self.get_gs(**kwargs) # ground state
+        return wf.dot(self.hamiltonian*wf).real # return energy
+
 
 
 

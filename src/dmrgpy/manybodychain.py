@@ -12,6 +12,7 @@ from . import dynamics
 from . import funtk
 from . import vev
 from . import mpsalgebra
+from . import entanglement
 from . import excited
 from . import effectivehamiltonian
 from .writemps import write_sites
@@ -38,6 +39,7 @@ class Many_Body_Chain():
       self.clean() # clean calculation
       self.inipath = os.getcwd() # original folder
       self.ns = len(sites) # number of sites
+      self.mode = None # no mode (use the input parameter)
       self.exchange = 0 # zero
       self.fields = 0 # zero
       self.pairing = 0
@@ -55,6 +57,7 @@ class Many_Body_Chain():
       # additional arguments
       self.kpmmaxm = 50 # bond dimension in KPM
       self.maxm = 30 # bond dimension in wavefunctions
+      self.mpomaxm = 5000 # bond dimension for operators
       self.nsweeps = 15 # number of sweeps
       self.noise = 1e-1 # noise for dmrg
       self.kpmcutoff = 1e-12 # cutoff in KPM
@@ -77,6 +80,7 @@ class Many_Body_Chain():
       self.has_ED_obj = False # ED object has been computed
       self.kpm_extrapolate = False # use extrapolation
       self.kpm_extrapolate_factor = 2.0 # factor for the extrapolation
+      self.kpm_extrapolate_mode = "plain" # mode of the extrapolation
       os.system("mkdir -p "+self.path) # create folder for the calculations
       self.initialize()
       # and initialize the sites
@@ -155,6 +159,7 @@ class Many_Body_Chain():
       """
       return vev.vev(self,MO,**kwargs)
   def vev(self,MO,mode="DMRG",**kwargs): 
+      if self.mode is not None: mode = self.mode # redefine
       if mode=="DMRG": return vev.vev(self,MO,**kwargs)
       elif mode=="ED": return self.get_ED_obj().vev(MO,**kwargs) # ED object
       else: raise
@@ -196,6 +201,9 @@ class Many_Body_Chain():
   def overlap(self,wf1,wf2,**kwargs):
       """Compute the overlap"""
       return mpsalgebra.overlap(self,wf1,wf2,**kwargs)
+  def aMb(self,wf1,M,wf2,**kwargs):
+      """Compute the overlap <a|M|b>"""
+      return mpsalgebra.overlap_aMb(self,wf1,M,wf2,**kwargs)
   def operator_norm(self,op,**kwargs):
       """Estimate the norm of an operator"""
       return mpsalgebra.operator_norm(self,op,**kwargs)
@@ -209,6 +217,9 @@ class Many_Body_Chain():
   def applyoperator(self,A,wf,**kwargs):
       """Apply an operator"""
       return mpsalgebra.applyoperator(self,A,wf,**kwargs)
+  def applyinverse(self,A,wf,**kwargs):
+      """Apply an operator"""
+      return mpsalgebra.applyinverse(self,A,wf,**kwargs)
   def summps(self,wf1,wf2,**kwargs):
       """Apply an operator"""
       return mpsalgebra.summps(self,wf1,wf2,**kwargs)
@@ -257,17 +268,33 @@ class Many_Body_Chain():
           return
       else: raise
       if not os.path.isfile(mpscpp): # mpscpp.x not found, rerun with julia
-          print("C++ backend not found, trying tu run with Julia version")
+          print("C++ backend not found, trying to run with Julia version")
           self.setup_julia() # turn to Julia
           return self.run() # rerun with julia
       from . import cpprun
       cpprun.run(self) # run the C++ version
-  def get_entropy(self,wf,mode="DMRG",**kwargs):
-      """Return the entanglement entropy"""
-      if mode=="DMRG":
-          from . import entropy
-          return entropy.compute_entropy(self,wf,**kwargs)
-      else: return NotImplemented
+  def get_bond_entropy(self,wf,i,j):
+      """Return the entanglement entropy of two sites"""
+      from . import entropy
+      return entropy.bond_entropy(self,wf,i,j)
+  def get_site_entropy(self,wf,b):
+      """Return the entanglement entropy of a site"""
+      from . import entropy
+      return entropy.site_entropy(self,wf,b)
+#      if mode=="DMRG":
+#          from . import entropy
+#          return entropy.compute_entropy(self,wf,**kwargs)
+#      else: return NotImplemented
+  def get_correlation_matrix(self,**kwargs):
+      return entanglement.get_correlation_matrix(self,**kwargs)
+  def get_correlation_eigenvalues(self,**kwargs):
+      return entanglement.get_correlation_eigenvalues(self,**kwargs)
+  def get_correlation_entropy(self,**kwargs):
+      return entanglement.get_correlation_entropy(self,**kwargs)
+  def get_correlated_orbitals(self,**kwargs):
+      return entanglement.get_correlated_orbitals(self,**kwargs)
+  def get_correlated_density(self,**kwargs):
+      return entanglement.get_correlated_density(self,**kwargs)
   def get_dynamical_correlator_MB(self,**kwargs):
       return dynamics.get_dynamical_correlator(self,**kwargs)
   def get_dynamical_correlator(self,mode="DMRG",**kwargs):
@@ -332,14 +359,18 @@ class Many_Body_Chain():
         else: self.skip_dmrg_gs = True # reconverge the calculation
   def get_gs(self,best=False,n=1,mode="DMRG",**kwargs):
       """Return the ground state"""
-      if self.computed_gs: return self.wf0
-      if mode=="DMRG":
+      if self.mode is not None: mode = self.mode # redefine
+      if mode=="DMRG": # DMRG mode
+        if self.computed_gs: # if stored, rewrite and return
+            self.wf0.write(name=self.wf0.name,path=self.path)
+            return self.wf0
         if best: groundstate.best_gs(self,n=n,**kwargs) # best ground state
         else: self.gs_energy(**kwargs) # perform a ground state calculation
         return self.wf0 # return wavefunction
-      elif mode=="ED": return self.get_ED_obj().get_gs()
+      elif mode=="ED": return self.get_ED_obj().get_gs(**kwargs)
   def gs_energy(self,mode="DMRG",**kwargs):
       """Return the ground state energy"""
+      if self.mode is not None: mode = self.mode # redefine
       if mode=="DMRG": return groundstate.gs_energy(self,**kwargs)
       elif mode=="ED": return self.get_ED_obj().gs_energy() # ED object
       else: raise
@@ -386,11 +417,13 @@ class Many_Body_Chain():
       Return an estimate of the bandwidth
       """
       return 3*self.ns # estimated bandwidth
-  def random_mps(self,mode="DMRG"):
+  def random_mps(self,mode="DMRG",orthogonal=None):
       """Generate a random MPS"""
+      if self.mode is not None: mode = self.mode # redefine
       if mode=="DMRG":
-          from . import mps
-          return mps.random_mps(self)
+         from . import mps
+         if orthogonal is None:  return mps.random_mps(self)
+         else: return mps.orthogonal_random_mps(self,orthogonal)
       elif mode=="ED":
           return self.get_ED_obj().random_state()
   def get_operator(self,name,i=None):

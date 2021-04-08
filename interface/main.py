@@ -297,6 +297,19 @@ def get_dynamical_correlator_single():
     execute_script("sf-dynamical_correlator --input DYNAMICAL_CORRELATOR.OUT  --ylabel "+cname)
 
 
+def is_parallel():
+    if app.getbox("parallelization")=="Yes": return True
+    else: return False
+
+def multievaluate(f,ps):
+    """Evaluate a function for multiple parameters"""
+    if is_parallel():
+        from dmrgpy import parallel
+        parallel.cores = parallel.maxcpu # set to the maximum value
+        fs = [lambda: f(p) for p in ps] # define all the functions
+        return parallel.multicall(fs)
+    else: return [f(p) for p in ps] # return all the results
+
 
 def get_dynamical_correlator_map():
     """Dynamic correlator in a single site"""
@@ -315,15 +328,14 @@ def get_dynamical_correlator_map():
     #### Parallel execution ###
     if app.getbox("parallelization")=="Yes": # parallel calculation
         def fm(p): # function to call
-          sc0 = sc.clone() # clone directory
-          def f(): # function to call
-            print("Computing DYNCORR for",p)
             name = getAB(p)
-            out = sc0.get_dynamical_correlator(delta=delta,name=name)
-            sc0.clean()
-            return out
-          return f # return dummy function
-        from dmrgpy import parallel
+            sc0 = sc.clone() # clone directory
+            def f(): # function to call
+                print("Computing DYNCORR for",p)
+                out = sc0.get_dynamical_correlator(delta=delta,name=name)
+                sc0.clean()
+                return out
+            return f # return dummy function
         from dmrgpy import parallel
         parallel.cores = parallel.maxcpu # set to the maximum value
         outs = parallel.multicall([fm(p) for p in pairs])
@@ -356,14 +368,14 @@ def get_dynamical_correlator_map():
 
 def get_magnetization():
     sc = getsc(app) # get the spin chain object
-    sc.get_gs()
-    mx,my,mz = sc.get_magnetization(mode=get_mode()) # get the magnetization
+#    mx,my,mz = sc.get_magnetization(mode=get_mode()) # get the magnetization
     inds = np.array(range(sc.ns))
     name = app.getbox("magnetization_type")
-    if name=="X": mi = mx
-    elif name=="Y": mi = my
-    elif name=="Z": mi = mz
+    if name=="X": ops = sc.Sx
+    elif name=="Y": ops = sc.Sy 
+    elif name=="Z": ops = sc.Sz
     else: raise
+    mi = np.array([sc.vev(o) for o in ops]).real
     np.savetxt("MAGNETIZATION.OUT",np.array([inds,mi]).T)
     set_data("MAGNETIZATION.OUT")
     execute_script("sf-magnetization --input MAGNETIZATION.OUT --ylabel "+name)

@@ -3,11 +3,12 @@ import numpy as np
 
 def exponential(self,h,wf,mode="DMRG",**kwargs):
     """Compute the exponential"""
+    if self.mode is not None: mode = self.mode # redefine
     if mode=="DMRG": 
         if h.is_hermitian(): 
             return exponential_dmrg(self,h,wf,dt=1.0,**kwargs)
         elif h.is_antihermitian(): 
-            return exponential_dmrg(self,-1j*h,wf,dt=1j,**kwargs)
+            return exponential_dmrg(self,-1j*h,wf,dt=-1j,**kwargs)
         else:
             print("Operator is not Hermitian nor anti-Hermitian")
             raise
@@ -16,15 +17,16 @@ def exponential(self,h,wf,mode="DMRG",**kwargs):
     else: raise
 
 
-def exponential_dmrg(self,h,wfa,dt=1.0,nt=1000):
+def exponential_dmrg(self,h,wfa,dt=1.0,nt=1000,nt0=None):
     """Compute the exponential of a wavefunction"""
     if not h.is_hermitian(): raise
-    nt0 = int(h.get_bandwidth(self)*nt)
+    if nt0 is None: nt0 = int(h.get_bandwidth(self)*nt)
     task = {"exponential_eMwf":"true",
             "tevol_dt_real":str(-dt.real),
             "tevol_dt_imag":str(dt.imag),
-            "tevol_n":str(nt0),
+            "tevol_n":str(int(nt0)),
             }
+    if self.tevol_custom_exp: task["tevol_custom_exp"] = "true"
     self.task = task # override tasks
     self.execute(lambda: wfa.write(name="input_wavefunction.mps")) # copy WF
     self.execute(lambda: h.write(name="hamiltonian.in"))
@@ -33,8 +35,18 @@ def exponential_dmrg(self,h,wfa,dt=1.0,nt=1000):
     return wf
 
 def overlap(self,wf1,wf2,mode="DMRG"):
+    if self.mode is not None: mode = self.mode # redefine
     if mode=="DMRG": return overlap_dmrg(self,wf1,wf2)
     elif mode=="ED": return self.get_ED_obj().overlap(wf1,wf2)
+    else: raise
+
+
+def overlap_aMb(self,wf1,A,wf2,mode="DMRG"):
+    """Compute the overlap <wf1|M|wf2>"""
+    if self.mode is not None: mode = self.mode # redefine
+    #return wf1.dot(A*wf2) # workaround
+    if mode=="DMRG": return overlap_aMb_dmrg(self,wf1,A,wf2)
+    elif mode=="ED": return wf1.dot(A*wf2) # workaround
     else: raise
 
 
@@ -51,6 +63,21 @@ def overlap_dmrg(self,wf1,wf2):
     return m[0] + 1j*m[1]
 
 
+def overlap_aMb_dmrg(self,wf1,A,wf2):
+    """Compute the overlap between wavefunctions"""
+    from .multioperator import obj2MO
+    A = obj2MO(A) # convert to a MO
+    task = {"overlap_aMb":"true",
+            }
+    self.task = task # override tasks
+    self.execute(lambda: wf1.write(name="overlap_aMb_wf1.mps"))
+    self.execute(lambda: wf2.write(name="overlap_aMb_wf2.mps"))
+    self.execute(lambda: A.write(name="overlap_aMb_M.in"))
+    self.execute(lambda: self.run()) # run calculation
+    m = self.execute(lambda : np.genfromtxt("OVERLAP_aMb.OUT")) # read
+    return m[0] + 1j*m[1]
+
+
 def applyoperator(self,A,wf,**kwargs):
     if type(wf)==mps.MPS: mode="DMRG"
     elif type(wf)==np.ndarray: mode="ED"
@@ -59,6 +86,14 @@ def applyoperator(self,A,wf,**kwargs):
     elif mode=="ED": 
         return self.get_ED_obj().applyoperator(A,wf)
 
+
+def applyinverse(self,A,wf,**kwargs):
+    if type(wf)==mps.MPS: mode="DMRG"
+    elif type(wf)==np.ndarray: mode="ED"
+    else: raise
+    if mode=="DMRG": return applyinverse_dmrg(self,A,wf,**kwargs)
+    elif mode=="ED": raise
+#        return self.get_ED_obj().applyoperator(A,wf)
 
 
 def summps(self,wf1,wf2,**kwargs):
@@ -96,6 +131,18 @@ def applyoperator_dmrg(self,A,wf):
     return mps.MPS(self,name="applyoperator_wf1.mps").copy() # copy
 
 
+def applyinverse_dmrg(self,A,wf,tol=1e-4,maxn=100):
+    """Apply operator to a many body wavefunction"""
+    self.execute(lambda: wf.write(name="apply_inverse_wf0.mps")) # write WF
+    task = {"apply_inverse":"true",
+            "cvm_tol":tol,
+            "cvm_nit":maxn,
+            }
+    self.execute(lambda: A.write(name="apply_inverse_multioperator.in"))
+    self.task = task
+    self.execute( lambda : self.run()) # run calculation
+    return mps.MPS(self,name="apply_inverse_wf1.mps").copy() # copy
+
 
 
 def operator_norm(self,op,ntries=5,simplify=True):
@@ -111,3 +158,7 @@ def operator_norm(self,op,ntries=5,simplify=True):
 
 
 
+from .algebra.arnolditk import mpsarnoldi
+from .algebra.arnolditk import lowest_energy as lowest_energy_arnoldi
+from .algebra.arnolditk import lowest_energy_non_hermitian as lowest_energy_non_hermitian_arnoldi
+from .algebra.arnolditk import gram_smith_single
