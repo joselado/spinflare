@@ -46,6 +46,11 @@ sudo apt-get install g++-6
 sudo apt-get install liblapack-dev
 
 ## Example
+### Dynamical correlator of a topological spin chain (S=1)
 The example below shows the calculations of the dynamical structure factor of a Heisenberg chain with S=1 and 48 sites. This computation shows the emergence of the bulk Haldane gap and the gapless fractionalizated edge modes.
 ![Alt text](images/dyncorr_Haldane.png?raw=true "Dynamical correlator of the Haldane Heisenberg model")
+
+### Local magnetization of a quantum chain with an edge field
+The example below shows the local magnetization for a Heisenberg chain of S=1/2, with a local magnetic field in the x direction applied on the first site. Due to the quantum disordered ground state, it is observed a decay of the magnetization as we go further from the edge site. The decay is a power-law due to the gapless nature of the system.
+![Alt text](images/magnetization_s12.png?raw=true "Local magnetization of a S=1/2 Heisenberg chain with a local field")
 

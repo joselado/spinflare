@@ -1,0 +1,57 @@
+import os
+import sys
+path = os.path.dirname(os.path.realpath(__file__)) # current path
+path += "/../src"
+sys.path.append(path) # add library
+from interfacetk import plotpyqt
+get_interface = plotpyqt.get_interface
+
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib
+import sys
+
+matplotlib.rcParams.update({'font.size': 18})
+matplotlib.rcParams['font.family'] = "Bitstream Vera Serif"
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--input",default="SPINS.OUT")
+args = parser.parse_args() # get the arguments
+name = args.input # input file
+m = np.genfromtxt(name) # get the array
+
+def funfig(obj):
+    fig = plt.figure(obj.figure.number)
+    fig.subplots_adjust(0.2,0.2)
+    fig.set_facecolor("white")
+    
+    # get the label for the y axis
+    # define the ylabel
+    bra = "$\\langle GS |"
+    ket = "| GS \\rangle$"
+    #if args.ylabel=="SS": ylabel = bra+"\\vec S_i \\cdot \\vec S_j"+ket
+    if args.ylabel=="X": ylabel = bra+"S^x_i"+ket
+    elif args.ylabel=="Y": ylabel = bra+"S^y_i"+ket
+    elif args.ylabel=="Z": ylabel = bra+"S^z_i"+ket
+    else: raise
+    yp = m[1] # y-axis
+    if obj.get_combobox("ptype")=="absolute": 
+        yp = np.abs(yp)
+        ylabel = "|"+ylabel + "|"
+    elif obj.get_combobox("ptype")=="log absolute": 
+        yp = np.log(np.abs(yp))
+        ylabel = "log(|"+ylabel + "|)"
+    plt.plot(m[0],yp,marker="o",c="blue")
+    dy = max([1e-3,(np.max(yp) - np.min(yp))])*0.1
+    plt.xlabel("Site")
+    plt.ylabel(ylabel)
+    plt.ylim([np.min(yp)-dy,np.max(yp)+dy])
+    return fig
+
+
+app,main = get_interface(funfig) # get the interface
+main.add_combobox(["signed","absolute","log absolute"],label="Plot type",key="ptype")
+main.plot()
+main.show()
+sys.exit(app.exec_())
+
