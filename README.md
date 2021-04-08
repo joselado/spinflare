@@ -13,6 +13,8 @@ Dynamical correlator function
 Excited states
 
 ## How to install
+
+## Linux
 Execute the script "install.sh", afterwards you just have to write in the
 terminal
 "spinflare"
@@ -21,6 +23,16 @@ The compilation requires a modern C++ compiler and lapack libraries
 
 The library relies on several Python libraries, a simple way of getting
 all the dependencies is by installing Anaconda Python.
+
+
+## Windows ##
+
+For using this program in Windows, the easiest solution is to create a virtual
+machine using [Virtual Box](https://www.virtualbox.org/), installing
+a version of [Ubuntu](https://releases.ubuntu.com/20.04/)
+in that virtual machine, and following the previous
+instructions.
+
 
 ## Dependencies
 At least g++ version 6
