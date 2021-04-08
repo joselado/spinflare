@@ -356,6 +356,7 @@ def get_dynamical_correlator_map():
 
 def get_magnetization():
     sc = getsc(app) # get the spin chain object
+    sc.get_gs()
     mx,my,mz = sc.get_magnetization(mode=get_mode()) # get the magnetization
     inds = np.array(range(sc.ns))
     name = app.getbox("magnetization_type")

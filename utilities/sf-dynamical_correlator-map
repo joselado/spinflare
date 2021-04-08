@@ -101,7 +101,7 @@ app,main = get_interface(funfig) # get the interface
 #ks = np.linspace(1.0,3.0,50) # wavevectors
 ps = np.linspace(0.0,1.0,100) # phases
 #main.add_slider(label="Wavevector",key="k",vs=ks) # initialize the slider
-main.add_slider(label="Saturation",key="saturation",vs=ps,v0=0.95) # initialize the slider
+main.add_slider(label="Saturation",key="saturation",vs=ps,v0=0.7) # initialize the slider
 #main.add_text(label="Shift",key="dy",text="0.0") # initialize the slider
 # initialize the combobox
 #main.add_combobox(["red","blue","black"],label="Color",key="c")
