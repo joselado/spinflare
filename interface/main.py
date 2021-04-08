@@ -44,6 +44,8 @@ def set_logo():
   app.set_image("spinflare_logo",logopath)
   app.set_image("exchange_image",path+"/logo/exchange_image.png")
   app.set_image("field_image",path+"/logo/field_image.png")
+  app.set_image("magnetization_image",path+"/logo/magnetization_image.png")
+  app.set_image("dynamical_image",path+"/logo/dynamical_image.png")
 
 set_logo()
 
