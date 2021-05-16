@@ -38,7 +38,7 @@ os.system("mv mpscpp mpscpp.x")
 os.chdir(path) # go to the main path
 
 # Python dependences
-os.system("pip install pmdarina")
+#os.system("pip install pmdarina")
 
 import addsystem
 addsystem.addbashrc() # add to the .bashrc
