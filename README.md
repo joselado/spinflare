@@ -35,13 +35,15 @@ instructions.
 
 
 ## Dependencies
-At least g++ version 6
-### How to install all the C++ dependencies in Ubuntu
+At least g++ version 6 or higher
+### How to install all the C++ dependencies in Ubuntu 21
+sudo apt-get install make
+
 sudo add-apt-repository ppa:ubuntu-toolchain-r/test
 
 sudo apt-get update
 
-sudo apt-get install g++-6
+sudo apt-get install g++-10
 
 sudo apt-get install liblapack-dev
 

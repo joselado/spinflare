@@ -1,5 +1,7 @@
 import os
 
+cpp = "g++-10" # C++ version to use
+
 # compile Itensor library
 path = os.path.dirname(os.path.realpath(__file__))+"/../" # main path
 os.chdir(path+"/src/dmrgpy/mpscpp2/ITensor")
@@ -14,7 +16,7 @@ if platform.system()=="Linux": # Linux system
       import autoinstallubuntu
       autoinstallubuntu.install() # install dependencies
       # replace the compiler in options.mk
-      out = open("options.mk").read().replace("CCCOM=g++","CCCOM=g++-6")
+      out = open("options.mk").read().replace("CCCOM=g++","CCCOM="+cpp)
       open("options.mk","w").write(out) # write new file
 else:
   print("Detected Mac system")
