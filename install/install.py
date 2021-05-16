@@ -25,6 +25,7 @@ else:
 
 
 # now do the compilation
+os.chdir(path+"/src/dmrgpy/mpscpp2/ITensor")
 os.system("make clean ")
 os.system("make")
 os.chdir(path) # original directory
@@ -35,6 +36,9 @@ os.system("make clean")
 os.system("make")
 os.system("mv mpscpp mpscpp.x")
 os.chdir(path) # go to the main path
+
+# Python dependences
+os.system("pip install pmdarina")
 
 import addsystem
 addsystem.addbashrc() # add to the .bashrc
